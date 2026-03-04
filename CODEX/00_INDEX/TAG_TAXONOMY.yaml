@@ -1,0 +1,147 @@
+# ============================================================================
+# TAG_TAXONOMY.yaml — Controlled Vocabulary for Document Tags
+# ============================================================================
+#
+# PURPOSE: Prevents tag sprawl. All tags used in doc frontmatter MUST exist
+# in this file. If a new tag is needed, add it here FIRST with a description.
+#
+# RULES:
+#   1. Use lowercase, hyphenated tags (e.g., "root-cause" not "RootCause")
+#   2. Check for existing synonyms before adding a new tag
+#   3. Each tag must have a description
+#   4. Group tags by domain for human readability
+# ============================================================================
+
+schema_version: "1.0.0"
+
+# ── Lifecycle & Status ────────────────────────────────────────────────────────
+lifecycle:
+  - tag: active
+    description: "Currently in use and maintained"
+  - tag: deprecated
+    description: "Superseded or no longer relevant"
+  - tag: draft
+    description: "Work in progress, not yet reviewed"
+
+# ── Documentation ─────────────────────────────────────────────────────────────
+documentation:
+  - tag: documentation
+    description: "Documentation processes, doc management, doc generation"
+  - tag: standards
+    description: "Coding standards, naming conventions, formatting rules"
+  - tag: naming
+    description: "Naming conventions for files, folders, variables"
+  - tag: frontmatter
+    description: "YAML frontmatter schema and requirements"
+  - tag: templates
+    description: "Document templates and scaffolding"
+  - tag: index
+    description: "Navigation, entry points, master indexes"
+  - tag: entry-point
+    description: "Starting point for humans or agents"
+  - tag: navigation
+    description: "Navigation aids, wayfinding, document discovery"
+
+# ── Architecture ──────────────────────────────────────────────────────────────
+architecture:
+  - tag: architecture
+    description: "System architecture, high-level design"
+  - tag: decision
+    description: "Architecture Decision Records (ADRs)"
+  - tag: api
+    description: "API contracts, endpoints, message formats"
+  - tag: schema
+    description: "Data schemas, database models, message structures"
+  - tag: integration
+    description: "Cross-component integration, service communication"
+  - tag: configuration
+    description: "Configuration management, environment variables"
+
+# ── Development ───────────────────────────────────────────────────────────────
+development:
+  - tag: coding
+    description: "Coding practices, code style, implementation patterns"
+  - tag: governance
+    description: "Governance protocols, compliance, organizational standards"
+  - tag: quality
+    description: "Code quality, review standards, quality metrics"
+  - tag: safety
+    description: "Safety-critical practices, fail-safe design, hazard mitigation"
+  - tag: dependencies
+    description: "Package management, version pinning"
+  - tag: security
+    description: "Security protocols, authentication, authorization"
+  - tag: performance
+    description: "Performance budgets, optimization, benchmarks"
+  - tag: git
+    description: "Version control, branching, merge strategies"
+  - tag: project-management
+    description: "Agentic development lifecycle, sprints, checkpoints, work item tracking"
+
+# ── Testing & Verification ────────────────────────────────────────────────────
+testing:
+  - tag: testing
+    description: "Test specifications, test plans, QA processes"
+  - tag: unit-tests
+    description: "Unit-level test coverage and patterns"
+  - tag: e2e
+    description: "End-to-end test scenarios and infrastructure"
+  - tag: verification
+    description: "Verification doctrine, acceptance criteria"
+  - tag: validation
+    description: "Validation reports, compliance checks"
+
+# ── Operations ────────────────────────────────────────────────────────────────
+operations:
+  - tag: deployment
+    description: "Deployment procedures, CI/CD pipelines"
+  - tag: monitoring
+    description: "Logging, alerting, observability"
+  - tag: disaster-recovery
+    description: "Backup, restore, failover procedures"
+  - tag: infrastructure
+    description: "Servers, VMs, cloud resources"
+  - tag: runbook
+    description: "Step-by-step operational procedures"
+
+# ── Research & Investigation ──────────────────────────────────────────────────
+research:
+  - tag: research
+    description: "Whitepapers, literature reviews, investigations"
+  - tag: poc
+    description: "Proof of concept, prototype, experiment"
+  - tag: analysis
+    description: "Root cause analysis, forensic investigation"
+
+# ── Defects ───────────────────────────────────────────────────────────────────
+defects:
+  - tag: bug
+    description: "Bug reports, defect documentation"
+  - tag: root-cause
+    description: "Root cause analysis findings"
+  - tag: incident
+    description: "Production incidents, post-mortems"
+  - tag: regression
+    description: "Regression issues from changes"
+
+# ── Features & Evolution ─────────────────────────────────────────────────────
+evolution:
+  - tag: feature
+    description: "Feature specifications, enhancement proposals"
+  - tag: roadmap
+    description: "Project roadmaps, milestone planning"
+  - tag: migration
+    description: "Migration plans, upgrade paths"
+  - tag: refactor
+    description: "Refactoring plans, technical debt reduction"
+
+# ── Agent-Specific ────────────────────────────────────────────────────────────
+agents:
+  - tag: agent-instructions
+    description: "Instructions specifically for AI agents"
+  - tag: context
+    description: "Project context, onboarding information"
+  - tag: workflow
+    description: "Agent workflow definitions, task orchestration"
+  - tag: prompt-engineering
+    description: "System prompts, persona definitions"
