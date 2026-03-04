@@ -1,4 +1,7 @@
-"""Grid widget for TUI — renders 50×50 species grid with Rich markup.
+"""Grid widget for TUI — renders species grid with colored characters.
+
+Uses dots (●) for organisms on a dark background, creating
+a simulation-style visualization similar to cellular automata.
 
 Refs: EVO-002 §4.3, BLU-001 §7.5
 """
@@ -18,28 +21,28 @@ from biosphere.core.state import (
 )
 from biosphere.ui.payload import RenderPayload
 
-# ── Color Mapping ─────────────────────────────────────────────────────────────
+# ── Visual Mapping ────────────────────────────────────────────────────────────
 
 SPECIES_CHAR: dict[int, str] = {
-    SPECIES_EMPTY: " ",
-    SPECIES_PLANT: "█",
-    SPECIES_PREY: "█",
-    SPECIES_PREDATOR: "█",
+    SPECIES_EMPTY: "·",
+    SPECIES_PLANT: "●",
+    SPECIES_PREY: "●",
+    SPECIES_PREDATOR: "●",
 }
 
 SPECIES_COLOR: dict[int, str] = {
-    SPECIES_EMPTY: "black",
-    SPECIES_PLANT: "green",
-    SPECIES_PREY: "dodger_blue",
-    SPECIES_PREDATOR: "red",
+    SPECIES_EMPTY: "#333333",
+    SPECIES_PLANT: "#00cc44",
+    SPECIES_PREY: "#ffcc00",
+    SPECIES_PREDATOR: "#ff3333",
 }
 
 
 class GridWidget(Static):
-    """Renders the 50×50 species grid using Rich markup.
+    """Renders the 50×50 species grid using colored Rich markup.
 
-    Each cell displays the highest-trophic species present.
-    Uses block characters with species-specific colors.
+    Each cell shows the highest-trophic species as a colored dot.
+    Empty cells show a dim dot for grid visibility.
 
     Refs: EVO-002 §4.3
     """
@@ -47,19 +50,15 @@ class GridWidget(Static):
     DEFAULT_CSS = """
     GridWidget {
         width: 100%;
-        height: auto;
+        height: 100%;
         text-style: bold;
+        background: #0a0a0a;
+        padding: 0 1;
     }
     """
 
     def update_grid(self, payload: RenderPayload) -> None:
-        """Update the grid display from a RenderPayload.
-
-        Args:
-            payload: Current simulation snapshot.
-
-        Refs: EVO-002 §4.3
-        """
+        """Update the grid display from a RenderPayload."""
         sg = payload.species_grid
         lines: list[str] = []
 

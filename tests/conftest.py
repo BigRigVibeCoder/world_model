@@ -141,5 +141,8 @@ def make_payload(
         mean_energy=0.5,
         mean_precipitation=0.4,
         mean_sunlight=0.6,
+        entropy=0.8,
+        reward=0.5,
+        paused=False,
     )
 

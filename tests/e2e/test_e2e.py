@@ -189,6 +189,9 @@ class TestEngineToUIRender:
             mean_energy=float(oa[:, :, :, 1][alive].mean()) if alive.any() else 0.0,
             mean_precipitation=float(weather[:, :, 0].mean()),
             mean_sunlight=float(weather[:, :, 1].mean()),
+            entropy=0.8,
+            reward=0.5,
+            paused=False,
         )
 
         # Payload has valid data

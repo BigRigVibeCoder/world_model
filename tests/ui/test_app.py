@@ -51,6 +51,9 @@ def _make_payload(
         mean_energy=0.5,
         mean_precipitation=0.4,
         mean_sunlight=0.6,
+        entropy=0.8,
+        reward=0.5,
+        paused=False,
     )
 
 
@@ -101,6 +104,9 @@ class TestRenderPayload:
             mean_energy=float(oa[:, :, :, 1][alive].mean()) if alive.any() else 0.0,
             mean_precipitation=float(weather[:, :, 0].mean()),
             mean_sunlight=float(weather[:, :, 1].mean()),
+            entropy=0.8,
+            reward=0.5,
+            paused=False,
         )
 
         assert payload.tick == 1
@@ -123,14 +129,15 @@ class TestGridWidget:
         assert len(lines) == GRID_H
         assert len(lines[0]) == GRID_W
 
-    def test_render_empty_grid_spaces(self) -> None:
-        """Empty grid renders as spaces.
+    def test_render_empty_grid_dots(self) -> None:
+        """Empty grid renders as dim dots.
 
         Refs: EVO-002 §4.3
         """
         sg = np.zeros((GRID_H, GRID_W, MAX_PER_CELL), dtype=np.uint8)
         result = GridWidget.render_to_string(sg)
-        assert result.replace("\n", "").strip() == ""
+        # All chars should be the empty dot
+        assert all(c in ("\u00b7", "\n") for c in result)
         assert len(result.split("\n")) == GRID_H
 
     def test_render_populated_grid_has_blocks(self) -> None:
@@ -144,8 +151,8 @@ class TestGridWidget:
         sg[20, 20, 0] = SPECIES_PREDATOR
         result = GridWidget.render_to_string(sg)
         lines = result.split("\n")
-        assert lines[0][0] == "█"
-        assert lines[10][10] == "█"
+        assert lines[0][0] == "\u25cf"  # ● (filled circle)
+        assert lines[10][10] == "\u25cf"
 
 
 @pytest.mark.unit
@@ -157,7 +164,7 @@ class TestChartsWidget:
 
         Refs: EVO-002 §4.3
         """
-        bar = ChartsWidget._bar_line("🌱 Plants", 100, 200, "green")
+        bar = ChartsWidget._bar_line("Plants", 100, 200, "green")
         assert "100" in bar
         assert "Plants" in bar
 
@@ -166,7 +173,7 @@ class TestChartsWidget:
 
         Refs: EVO-002 §4.3
         """
-        bar = ChartsWidget._bar_line("🐇 Prey", 0, 0, "blue")
+        bar = ChartsWidget._bar_line("Prey", 0, 0, "blue")
         assert "0" in bar
         assert "Prey" in bar
 
