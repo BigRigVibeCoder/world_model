@@ -33,3 +33,13 @@ tmp/
 .darkgravity/
 research_results.json
 biosphere_spec.md
+.venv/
+__pycache__/
+*.pyc
+*.egg-info/
+logs/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/

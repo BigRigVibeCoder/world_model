@@ -1,0 +1,9 @@
+# Dev & Testing (GOV-002)
+pytest>=7.4
+pytest-benchmark>=4.0
+pytest-cov>=4.1
+hypothesis>=6.80
+
+# Static Analysis (GOV-003)
+mypy>=1.5
+ruff>=0.1

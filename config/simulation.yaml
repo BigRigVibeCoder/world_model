@@ -1,0 +1,7 @@
+# Simulation parameters (BLU-001 §7.1, BLU-002 §2.4)
+growth_rate: 0.1
+reproduction_threshold: 0.6
+max_age_prey: 500
+max_age_predator: 300
+metabolic_rate: 0.02
+weather_sigma: 2.0
