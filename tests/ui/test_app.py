@@ -10,12 +10,17 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
+from biosphere.core.simulation import SimulationEngine
 from biosphere.core.state import (
     GRID_H,
     GRID_W,
     MAX_PER_CELL,
+    SPECIES_EMPTY,
     SPECIES_PLANT,
+    SPECIES_PREDATOR,
+    SPECIES_PREY,
 )
+from biosphere.infrastructure.config import SimulationConfig
 from biosphere.ui.charts_widget import ChartsWidget
 from biosphere.ui.grid_widget import GridWidget
 from biosphere.ui.payload import RenderPayload
@@ -29,7 +34,6 @@ def _make_payload(
 ) -> RenderPayload:
     """Create a test RenderPayload."""
     sg = np.zeros((GRID_H, GRID_W, MAX_PER_CELL), dtype=np.uint8)
-    # Place some plants in first few cells
     placed = 0
     for r in range(GRID_H):
         for c in range(GRID_W):
@@ -75,6 +79,34 @@ class TestRenderPayload:
             p.tick = 99  # type: ignore[misc]
         assert p.tick == 0
 
+    def test_payload_from_engine_state(self) -> None:
+        """Payload can be built from live engine state.
+
+        Refs: EVO-002 §4.3, BLU-002 §2.2
+        """
+        engine = SimulationEngine(SimulationConfig())
+        state = engine.step()
+        sg = state["species_grid"]
+        oa = state["organism_attrs"]
+        weather = state["weather"]
+
+        alive = sg != SPECIES_EMPTY
+        payload = RenderPayload(
+            tick=engine.tick,
+            species_grid=sg,
+            n_plants=int((sg == SPECIES_PLANT).sum()),
+            n_prey=int((sg == SPECIES_PREY).sum()),
+            n_predators=int((sg == SPECIES_PREDATOR).sum()),
+            mean_health=float(oa[:, :, :, 0][alive].mean()) if alive.any() else 0.0,
+            mean_energy=float(oa[:, :, :, 1][alive].mean()) if alive.any() else 0.0,
+            mean_precipitation=float(weather[:, :, 0].mean()),
+            mean_sunlight=float(weather[:, :, 1].mean()),
+        )
+
+        assert payload.tick == 1
+        assert payload.n_plants > 0
+        assert payload.mean_health > 0
+
 
 @pytest.mark.unit
 class TestGridWidget:
@@ -101,6 +133,20 @@ class TestGridWidget:
         assert result.replace("\n", "").strip() == ""
         assert len(result.split("\n")) == GRID_H
 
+    def test_render_populated_grid_has_blocks(self) -> None:
+        """Grid with organisms renders non-space characters.
+
+        Refs: EVO-002 §4.3
+        """
+        sg = np.zeros((GRID_H, GRID_W, MAX_PER_CELL), dtype=np.uint8)
+        sg[0, 0, 0] = SPECIES_PLANT
+        sg[10, 10, 0] = SPECIES_PREY
+        sg[20, 20, 0] = SPECIES_PREDATOR
+        result = GridWidget.render_to_string(sg)
+        lines = result.split("\n")
+        assert lines[0][0] == "█"
+        assert lines[10][10] == "█"
+
 
 @pytest.mark.unit
 class TestChartsWidget:
@@ -123,3 +169,13 @@ class TestChartsWidget:
         bar = ChartsWidget._bar_line("🐇 Prey", 0, 0, "blue")
         assert "0" in bar
         assert "Prey" in bar
+
+    def test_bar_line_proportional(self) -> None:
+        """Bar filled characters scale with ratio.
+
+        Refs: EVO-002 §4.3
+        """
+        bar_half = ChartsWidget._bar_line("Test", 50, 100, "green")
+        bar_full = ChartsWidget._bar_line("Test", 100, 100, "green")
+        assert bar_full.count("█") >= bar_half.count("█")
+        assert "50" in bar_half

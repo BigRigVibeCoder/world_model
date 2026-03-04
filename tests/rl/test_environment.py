@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
+from hypothesis import given, settings
+from hypothesis import strategies as st
 
 from biosphere.core.state import (
     SPECIES_PREDATOR,
@@ -284,3 +286,71 @@ class TestGymChecker:
         # check_env will raise or warn on issues
         check_env(env.unwrapped, skip_render_check=True)
         assert True  # If we reach here, check_env passed
+
+
+@pytest.mark.property
+class TestEnvPropertyBased:
+    """Hypothesis property tests for environment invariants.
+
+    GOV-002 §5: Property-based tests for all validation/processing functions.
+    """
+
+    @given(seed=st.integers(min_value=0, max_value=10000))
+    @settings(max_examples=10, deadline=30000)
+    def test_mask_always_valid_shape(self, seed: int) -> None:
+        """Action mask is always (37,) bool regardless of seed.
+
+        Refs: BLU-002 §3.2, GOV-002 §5
+        """
+        env = BiosphereEnv()
+        env.reset(seed=seed)
+        mask = env.action_masks()
+        assert mask.shape == (MASK_SIZE,)
+        assert mask.dtype == bool
+
+    @given(seed=st.integers(min_value=0, max_value=10000))
+    @settings(max_examples=10, deadline=30000)
+    def test_obs_always_in_space(self, seed: int) -> None:
+        """Observation is always within observation_space bounds.
+
+        Refs: BLU-002 §3.3, GOV-002 §5
+        """
+        env = BiosphereEnv()
+        obs, _ = env.reset(seed=seed)
+        assert env.observation_space.contains(obs)
+        # Step once
+        action = env.action_space.sample()
+        obs, _, _, _, _ = env.step(action)
+        assert env.observation_space.contains(obs)
+
+    @given(seed=st.integers(min_value=0, max_value=10000))
+    @settings(max_examples=10, deadline=30000)
+    def test_unused_species_always_masked_property(self, seed: int) -> None:
+        """Species slot 2 is always masked (unused) regardless of state.
+
+        Refs: BLU-002 §3.2, GOV-002 §5
+        """
+        env = BiosphereEnv()
+        env.reset(seed=seed)
+        # Run a few steps
+        for _ in range(5):
+            mask = env.action_masks()
+            species_offset = ACTION_TYPE_SIZE + INTENSITY_SIZE
+            assert mask[species_offset + 2] is np.bool_(False)
+            env.step(env.action_space.sample())
+
+    @given(seed=st.integers(min_value=0, max_value=10000))
+    @settings(max_examples=10, deadline=30000)
+    def test_reward_always_finite(self, seed: int) -> None:
+        """Reward is always finite after any valid step.
+
+        Refs: BLU-002 §3.4, GOV-002 §5
+        """
+        env = BiosphereEnv()
+        env.reset(seed=seed)
+        for _ in range(10):
+            action = env.action_space.sample()
+            _, reward, terminated, _, _ = env.step(action)
+            assert np.isfinite(reward)
+            if terminated:
+                break

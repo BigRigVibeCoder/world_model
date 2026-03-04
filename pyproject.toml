@@ -11,6 +11,8 @@ markers = [
     "unit: Pure unit tests — no I/O, no network, no disk (GOV-002 §4)",
     "property: Property-based tests via Hypothesis (GOV-002 §5)",
     "integration: Multi-component interaction tests (GOV-002 §8)",
+    "contract: API/codec contract verification tests (GOV-002 §9)",
+    "e2e: Full system end-to-end tests (GOV-002 §11)",
     "performance: Benchmark and latency budget tests (GOV-002 §13)",
     "slow: Tests taking > 1 second",
     "safety: Safety-critical path tests requiring MC/DC coverage",
