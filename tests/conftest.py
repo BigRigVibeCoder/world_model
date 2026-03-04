@@ -6,6 +6,7 @@ GOV-002 §6: Every test starts clean, runs in isolation.
 
 from __future__ import annotations
 
+from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
 
@@ -13,6 +14,12 @@ import numpy as np
 import pytest
 
 from biosphere.core.simulation import SimulationEngine
+from biosphere.core.state import (
+    GRID_H,
+    GRID_W,
+    MAX_PER_CELL,
+    SPECIES_PLANT,
+)
 
 # ── GOV-002 §23: Deterministic Seeds ─────────────────────────────────────────
 
@@ -74,3 +81,65 @@ def stepped_engine(engine: SimulationEngine) -> SimulationEngine:
     """
     engine.step()
     return engine
+
+
+# ── Sprint 2: RL Fixtures ────────────────────────────────────────────────────
+
+
+@pytest.fixture
+def biosphere_env() -> Any:
+    """Fresh BiosphereEnv with default config.
+
+    Refs: EVO-002, BLU-002 §3
+    """
+    from biosphere.rl.environment import BiosphereEnv
+
+    env = BiosphereEnv()
+    env.reset(seed=DETERMINISTIC_SEED)
+    return env
+
+
+@pytest.fixture
+def training_config_path() -> Path:
+    """Path to training YAML config.
+
+    Refs: EVO-002 §4.2
+    """
+    return Path("config/training.yaml")
+
+
+# ── Sprint 2: UI Fixtures ────────────────────────────────────────────────────
+
+
+def make_payload(
+    tick: int = 0,
+    n_plants: int = 100,
+    n_prey: int = 50,
+    n_pred: int = 10,
+) -> Any:
+    """Create a RenderPayload from specified population counts.
+
+    Refs: EVO-002 §4.3
+    """
+    from biosphere.ui.payload import RenderPayload
+
+    sg = np.zeros((GRID_H, GRID_W, MAX_PER_CELL), dtype=np.uint8)
+    placed = 0
+    for r in range(GRID_H):
+        for c in range(GRID_W):
+            if placed < n_plants:
+                sg[r, c, 0] = SPECIES_PLANT
+                placed += 1
+
+    return RenderPayload(
+        tick=tick,
+        species_grid=sg,
+        n_plants=n_plants,
+        n_prey=n_prey,
+        n_predators=n_pred,
+        mean_health=0.7,
+        mean_energy=0.5,
+        mean_precipitation=0.4,
+        mean_sunlight=0.6,
+    )
+

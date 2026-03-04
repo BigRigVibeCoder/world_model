@@ -8,3 +8,11 @@ structlog>=23.1
 # Configuration
 pydantic>=2.0
 pyyaml>=6.0
+
+# RL (Sprint 2)
+gymnasium>=0.29
+stable-baselines3>=2.0
+sb3-contrib>=2.0
+
+# TUI (Sprint 2)
+textual>=0.40

@@ -86,12 +86,14 @@ class SimulationEngine:
         self,
         params: SimulationParams,
         on_intervention_error: Callable[[InterventionError], None] | None = None,
+        seed: int = 42,
     ) -> None:
         """Initialize the simulation engine.
 
         Args:
             params: Configuration satisfying SimulationParams protocol.
             on_intervention_error: Optional callback for invalid interventions.
+            seed: Random seed for deterministic behavior.
 
         Raises:
             SimulationError: If params fail validation.
@@ -99,6 +101,7 @@ class SimulationEngine:
         self._validate_params(params)
         self._params = params
         self._on_intervention_error = on_intervention_error
+        self._rng = np.random.default_rng(seed=seed)
         self._tick: int = 0
         self._state: GridState = self._initialize_state()
         self._previous_state: GridState | None = None
@@ -209,7 +212,7 @@ class SimulationEngine:
         - Resources: correlated with terrain
         - Weather: uniform moderate conditions
         """
-        rng = np.random.default_rng(seed=42)
+        rng = self._rng
 
         # Terrain: smooth random fields
         terrain = np.zeros((GRID_H, GRID_W, 3), dtype=np.float32)
@@ -345,7 +348,7 @@ class SimulationEngine:
         empty = sg == SPECIES_EMPTY
         # Probabilistically fill empty slots
         fill_mask = empty & (
-            np.random.random(sg.shape).astype(np.float32) < intensity
+            self._rng.random(sg.shape).astype(np.float32) < intensity
         )
         sg[fill_mask] = SPECIES_PLANT
         oa[fill_mask, 0] = 0.8  # health
@@ -375,7 +378,7 @@ class SimulationEngine:
         target_mask = sg == target_species
         # Probabilistically remove based on intensity
         cull_mask = target_mask & (
-            np.random.random(sg.shape).astype(np.float32) < intensity
+            self._rng.random(sg.shape).astype(np.float32) < intensity
         )
         sg[cull_mask] = SPECIES_EMPTY
         oa[cull_mask] = 0.0
@@ -388,7 +391,7 @@ class SimulationEngine:
         if sigma > 0.0:
             weather = self._state["weather"]
             # Add small random perturbation before diffusion
-            rng = np.random.default_rng()
+            rng = self._rng
             noise = rng.normal(0, 0.02, weather.shape).astype(np.float32)
             weather += noise
             for ch in range(weather.shape[2]):
@@ -440,7 +443,7 @@ class SimulationEngine:
 
             # ~20% of organisms attempt to move each tick
             movers = mask & (
-                np.random.random(mask.shape).astype(np.float32) < MOVEMENT_PROBABILITY
+                self._rng.random(mask.shape).astype(np.float32) < MOVEMENT_PROBABILITY
             )
             if not movers.any():
                 continue
@@ -455,7 +458,7 @@ class SimulationEngine:
             n_movers = len(cell_rows)
 
             # Random direction: 0=N, 1=S, 2=W, 3=E
-            dirs = np.random.randint(0, 4, size=n_movers)
+            dirs = self._rng.integers(0, 4, size=n_movers)
             dr = np.array([-1, 1, 0, 0])[dirs]
             dc = np.array([0, 0, -1, 1])[dirs]
             target_rows = cell_rows + dr
@@ -600,7 +603,7 @@ class SimulationEngine:
             k = 10.0
             prob = 1.0 / (1.0 + np.exp(-k * (energy - threshold)))
             reproduce = mask & (
-                np.random.random(mask.shape).astype(np.float32) < prob
+                self._rng.random(mask.shape).astype(np.float32) < prob
             )
 
             if not reproduce.any():
