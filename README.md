@@ -20,7 +20,11 @@
 
 ## What Is This?
 
-Biosphere is a **vectorized ecological simulation** where plants, prey, and predators interact on a 50×50 grid following real ecological models. A **reinforcement learning agent** (MaskablePPO) learns to manage the ecosystem through interventions — seeding plants, adjusting rainfall, and culling species — to maximize biodiversity.
+This is a **complete, production-grade application built entirely by AI agents** under the direction of a human Architect. No line of code was written by hand — every file, test, governance document, and deployment script was generated through an **Agentic Development** workflow.
+
+The application itself is a **real-time ecological simulation** — a living digital ecosystem where plants, prey, and predators interact on a 50x50 grid following real published ecological models from biology and mathematics.
+
+**The point?** To demonstrate that AI agents can build real, working, tested, documented software — not just snippets or boilerplate, but an entire application with 195 passing tests, strict type checking, and aerospace-grade governance documentation.
 
 <p align="center">
   <img src="docs/images/tui_screenshot.png" alt="TUI Dashboard" width="600">
@@ -28,11 +32,56 @@ Biosphere is a **vectorized ecological simulation** where plants, prey, and pred
 
 ---
 
+## 🖥️ What You See When You Run `./run_tui.sh`
+
+When you launch the dashboard, you're watching a **live ecosystem simulation** running in your terminal:
+
+### The Grid (Left Panel)
+A 50x50 world where each dot is a living organism:
+- 🟢 **Green dots** = **Plants** — they grow via logistic growth (`dP/dt = rP(1-P/K)`), modulated by sunlight and rainfall
+- 🟡 **Yellow dots** = **Prey** — they eat plants, move via Levy flight, reproduce when energy is high, die from starvation or old age
+- 🔴 **Red dots** = **Predators** — they hunt prey using Holling Type II functional response, and starve when prey runs out
+- ⚫ **Dim dots** = **Empty cells** — nothing lives here (yet)
+
+### The Dashboard (Right Panel)
+- **Population Bars** — colored bars showing the relative population of each species, updating in real-time
+- **Entropy (H)** — the Shannon diversity index, measuring how balanced the ecosystem is. Higher = more biodiversity
+- **Reward** — the multi-objective score combining biodiversity, stability, and population health
+- **Tick** — the current simulation step
+
+### What You'll Observe
+Watch long enough and you'll see **classic Lotka-Volterra dynamics** play out in real-time:
+
+1. 📈 **Growth phase** — all species expand, filling the grid
+2. 🐺 **Predator boom** — predators overshoot, eating too many prey
+3. 📉 **Crash** — prey collapse, predators starve
+4. ☠️ **Possible extinction** — if prey drop too low, predators can't recover
+5. 🌿 **Recovery** — surviving species rebalance without predation pressure
+
+**Controls:** `Space` = Pause/Resume | `r` = Reset | `q` = Quit
+
+---
+
+## 🧬 The Simulation Engine
+
+Every tick, the simulation runs **6 phases** in order — each implemented as vectorized NumPy array operations (no Python loops):
+
+| Phase | What Happens | Model |
+|:------|:-------------|:------|
+| 1. Weather | Rainfall and sunlight diffuse across the grid | Gaussian blur |
+| 2. Resources | Plants grow based on carrying capacity | Logistic growth (Verhulst 1838) |
+| 3. Movement | Animals wander the grid | Levy flight |
+| 4. Consumption | Prey eat plants, predators eat prey | Holling Type II (1959) |
+| 5. Reproduction | High-energy organisms spawn offspring | Sigmoid probability |
+| 6. Mortality | Organisms die from age, starvation, or low health | Threshold-based |
+
+---
+
 ## ✨ Features
 
 | Feature | Details |
 |:--------|:--------|
-| 🧬 **6-Phase Simulation** | Weather diffusion, logistic resource growth, Lévy flight movement, Holling Type II consumption, sigmoid reproduction, age-based mortality |
+| 🧬 **6-Phase Simulation** | Weather diffusion, logistic resource growth, Levy flight movement, Holling Type II consumption, sigmoid reproduction, age-based mortality |
 | 🤖 **RL Agent** | MaskablePPO via Stable-Baselines3 with action masking for invalid interventions |
 | 📊 **Shannon Entropy Reward** | Multi-objective: biodiversity + stability + population health |
 | 🖥️ **Terminal Dashboard** | Real-time Textual TUI with grid visualization and population charts |
@@ -42,37 +91,9 @@ Biosphere is a **vectorized ecological simulation** where plants, prey, and pred
 
 ---
 
-## 🏗️ Architecture
-
-<p align="center">
-  <img src="docs/images/architecture.png" alt="Architecture" width="500">
-</p>
-
-```
-biosphere/
-├── core/           # Simulation engine (NumPy/SciPy, zero external deps)
-│   ├── simulation.py    # SimulationEngine — stateful 6-phase orchestrator
-│   ├── phases.py        # Weather, growth, movement, consumption, reproduction, mortality
-│   └── state.py         # GridState TypedDict, species constants
-├── rl/             # Reinforcement learning (Gymnasium + SB3)
-│   ├── environment.py   # BiosphereEnv — Dict obs, MultiDiscrete actions, action masks
-│   ├── reward.py        # Shannon entropy + stability + health
-│   └── train.py         # MaskablePPO training pipeline
-├── ui/             # Terminal UI (Textual)
-│   ├── app.py           # Main TUI application
-│   ├── grid_widget.py   # 50×50 species grid renderer
-│   └── charts_widget.py # Population bar charts
-└── infrastructure/ # Logging, config, error handling
-    ├── logging.py       # structlog JSONL + crash artifacts + correlation IDs
-    ├── config.py        # Pydantic-validated SimulationConfig
-    └── errors.py        # ApplicationError hierarchy
-```
-
----
-
 ## 🚀 Quick Start
 
-### One-Click Install
+### 1. Install (one command)
 
 **Linux / Mac:**
 ```bash
@@ -88,34 +109,14 @@ cd world_model
 .\install.ps1
 ```
 
-The installer checks Python, creates a venv, installs everything, and runs a smoke test. Done in ~60 seconds.
+### 2. Watch the Ecosystem
 
-### Run the Demo
+| What You Want | Command |
+|:-------------|:--------|
+| **Dashboard (TUI)** | `./run_tui.sh` |
+| **Headless demo** | `./run.sh` |
 
-**Linux / Mac:**
-```bash
-./run.sh
-```
-
-**Windows:**
-```powershell
-.\run.ps1
-```
-
-### Launch the TUI
-
-```bash
-PYTHONPATH=. python -m biosphere
-```
-
-### Train an RL Agent
-
-```python
-from biosphere.rl.train import train
-train(total_timesteps=100_000, save_path="checkpoints/my_agent")
-```
-
-### Run All Tests
+### 3. Run All Tests
 
 ```bash
 pytest tests/ -v
