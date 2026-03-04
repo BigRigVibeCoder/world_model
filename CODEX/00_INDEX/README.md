@@ -43,6 +43,11 @@ Welcome to the project knowledge base. This documentation system is designed for
 | ID | Title | Type | Status |
 |:---|:------|:-----|:-------|
 | [GOV-001](../10_GOVERNANCE/GOV-001_DocumentationStandard.md) | Documentation Standard | reference | APPROVED |
+| [GOV-002](../10_GOVERNANCE/GOV-002_TestingProtocol.md) | Testing Protocol | reference | APPROVED |
+| [GOV-003](../10_GOVERNANCE/GOV-003_CodingStandard.md) | Coding Standard | reference | APPROVED |
+| [GOV-004](../10_GOVERNANCE/GOV-004_ErrorHandlingProtocol.md) | Error Handling Protocol | reference | APPROVED |
+| [GOV-005](../10_GOVERNANCE/GOV-005_AgenticDevelopmentLifecycle.md) | Agentic Development Lifecycle | reference | APPROVED |
+| [GOV-006](../10_GOVERNANCE/GOV-006_LoggingSpecification.md) | Logging Specification | reference | APPROVED |
 
 **Category Codes**: `GOV` (Governance), `ADR` (Architecture Decision Record)
 
@@ -54,7 +59,8 @@ Welcome to the project knowledge base. This documentation system is designed for
 
 | ID | Title | Type | Status |
 |:---|:------|:-----|:-------|
-| *(empty — add specs as the project grows)* | | | |
+| [BLU-001](../20_BLUEPRINTS/BLU-001_BiosphereBalancer.md) | Biosphere Ecological Balancer — Technical Specification | reference | DRAFT |
+| [BLU-002](../20_BLUEPRINTS/BLU-002_BiosphereArchitecture.md) | Biosphere Ecological Balancer — Architecture Specification | reference | DRAFT |
 
 **Category Codes**: `BLU` (Blueprint/Spec), `API` (API Contract)
 
@@ -66,7 +72,7 @@ Welcome to the project knowledge base. This documentation system is designed for
 
 | ID | Title | Type | Status |
 |:---|:------|:-----|:-------|
-| *(empty — add runbooks as the project grows)* | | | |
+| [RUN-001](../30_RUNBOOKS/RUN-001_BiosphereSprint.md) | Biosphere Implementation Sprint | how-to | DRAFT |
 
 **Category Codes**: `RUN` (Runbook/Guide), `DEP` (Deployment)
 

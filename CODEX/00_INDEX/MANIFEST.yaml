@@ -79,7 +79,7 @@ documents:
 
   # ── 00_INDEX ────────────────────────────────────────────────────────────────
   - id: IDX-000
-    path: 00_INDEX/README.md
+    path: CODEX/00_INDEX/README.md
     title: "Documentation Master Index"
     type: reference
     status: APPROVED
@@ -91,7 +91,7 @@ documents:
 
   # ── 10_GOVERNANCE ───────────────────────────────────────────────────────────
   - id: GOV-001
-    path: 10_GOVERNANCE/GOV-001_DocumentationStandard.md
+    path: CODEX/10_GOVERNANCE/GOV-001_DocumentationStandard.md
     title: "Documentation Standard"
     type: reference
     status: APPROVED
@@ -104,7 +104,7 @@ documents:
       and formal retention/archival policies.
 
   - id: GOV-002
-    path: 10_GOVERNANCE/GOV-002_TestingProtocol.md
+    path: CODEX/10_GOVERNANCE/GOV-002_TestingProtocol.md
     title: "Testing Protocol"
     type: reference
     status: APPROVED
@@ -116,7 +116,7 @@ documents:
       MC/DC coverage, forensic artifacts, and fail-fast execution order.
 
   - id: GOV-003
-    path: 10_GOVERNANCE/GOV-003_CodingStandard.md
+    path: CODEX/10_GOVERNANCE/GOV-003_CodingStandard.md
     title: "Coding Standard"
     type: reference
     status: APPROVED
@@ -129,7 +129,7 @@ documents:
       static analysis profiles, and Disaster-Readability Principle.
 
   - id: GOV-004
-    path: 10_GOVERNANCE/GOV-004_ErrorHandlingProtocol.md
+    path: CODEX/10_GOVERNANCE/GOV-004_ErrorHandlingProtocol.md
     title: "Error Handling Protocol"
     type: reference
     status: APPROVED
@@ -142,7 +142,7 @@ documents:
       and mandatory post-incident review.
 
   - id: GOV-005
-    path: 10_GOVERNANCE/GOV-005_AgenticDevelopmentLifecycle.md
+    path: CODEX/10_GOVERNANCE/GOV-005_AgenticDevelopmentLifecycle.md
     title: "Agentic Development Lifecycle"
     type: reference
     status: APPROVED
@@ -155,7 +155,7 @@ documents:
       merge/deploy.
 
   - id: GOV-006
-    path: 10_GOVERNANCE/GOV-006_LoggingSpecification.md
+    path: CODEX/10_GOVERNANCE/GOV-006_LoggingSpecification.md
     title: "Logging Specification"
     type: reference
     status: APPROVED
@@ -166,3 +166,42 @@ documents:
       Trace-first design for agent execution reconstruction. Database and
       flat-file storage, forensic query patterns, correlation IDs, and
       retention policies.
+
+  # ── 20_BLUEPRINTS ───────────────────────────────────────────────────────────
+  - id: BLU-001
+    path: CODEX/20_BLUEPRINTS/BLU-001_BiosphereBalancer.md
+    title: "The Biosphere Ecological Balancer - Technical Specification"
+    type: reference
+    status: DRAFT
+    tags: [architecture, simulation, reinforcement-learning, world_model, ecology]
+    agents: [architect, coder, tester]
+    summary: >
+      A real-time 2D ecological simulation with a Reinforcement Learning
+      "Caretaker" agent that maintains biodiversity via weather, resource, and
+      population interventions. Built on NumPy, Gymnasium/SB3, and Textual TUI.
+
+  - id: BLU-002
+    path: CODEX/20_BLUEPRINTS/BLU-002_BiosphereArchitecture.md
+    title: "Biosphere Ecological Balancer - Architecture Specification"
+    type: reference
+    status: DRAFT
+    tags: [architecture, api, schema, configuration, integration]
+    agents: [architect, coder, tester]
+    summary: >
+      Hardened architectural design for the Biosphere Ecological Balancer.
+      Defines five acyclic modules (core, rl, ui, infrastructure, cli),
+      full interface contracts (GridState, SimulationEngine, BiosphereEnv),
+      action encoding, and GOV-004/006 compliant error handling.
+
+  # ── 30_RUNBOOKS ─────────────────────────────────────────────────────────────
+  - id: RUN-001
+    path: CODEX/30_RUNBOOKS/RUN-001_BiosphereSprint.md
+    title: "Biosphere Implementation Sprint"
+    type: how-to
+    status: DRAFT
+    tags: [runbook, project-management, architecture]
+    agents: [architect, coder, tester]
+    summary: >
+      Ordered 7-task implementation backlog for the Biosphere Ecological Balancer.
+      Dependency-ordered from project foundation to final governance audit.
+      Each task includes files to modify, acceptance criteria, and verification commands.
