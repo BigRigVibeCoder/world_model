@@ -28,3 +28,8 @@ build/
 # Temp
 tmp/
 .tmp/
+
+# DarkGravity
+.darkgravity/
+research_results.json
+biosphere_spec.md
