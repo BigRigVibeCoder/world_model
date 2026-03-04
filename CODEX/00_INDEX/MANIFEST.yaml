@@ -242,14 +242,38 @@ documents:
       point, then runs full GOV-002 governance audit. Delivers a working
       `python -m biosphere` application.
 
+  # ── 40_VERIFICATION ──────────────────────────────────────────────────────────
+  - id: VER-001
+    path: CODEX/40_VERIFICATION/VER-001_TestVerificationReport.md
+    title: "Test Verification Report"
+    type: reference
+    status: DRAFT
+    tags: [verification, testing, coverage, traceability]
+    agents: [tester]
+    summary: >
+      Biosphere test suite verification report. 177+ tests, 84%+ branch
+      coverage, 7 test tiers, MC/DC analysis for safety-critical paths.
+
+  - id: VER-002
+    path: CODEX/40_VERIFICATION/VER-002_TraceabilityMatrix.md
+    title: "Test-to-Requirements Traceability Matrix"
+    type: reference
+    status: DRAFT
+    tags: [verification, testing, traceability, mc-dc]
+    agents: [tester]
+    summary: >
+      Bidirectional traceability from test cases to BLU/GOV requirements.
+      Maps each test module to specification sections per GOV-002 §6.
+
   # ── 50_DEFECTS ───────────────────────────────────────────────────────────────
   - id: DEF-001
     path: CODEX/50_DEFECTS/DEF-001_GovernanceGapAnalysis.md
     title: "Governance Compliance Gap Analysis"
     type: reference
-    status: REVIEW
+    status: CLOSED
     tags: [defect, governance, compliance, audit]
     agents: [all]
     summary: >
       Systematic audit of biosphere codebase against all 6 governance docs.
-      22 gaps identified: 3 P0, 5 P1, 8 P2, 6 P3. Sprint 3 remediates.
+      22 gaps identified: 3 P0, 5 P1, 8 P2, 6 P3. All remediated in Sprint 3.
+

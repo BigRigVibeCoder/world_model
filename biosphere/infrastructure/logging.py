@@ -26,6 +26,10 @@ from typing import Any
 
 import structlog
 
+# ── GOV-006 §14: TRACE log level ─────────────────────────────────────────────
+TRACE_LEVEL = 5
+logging.addLevelName(TRACE_LEVEL, "TRACE")
+
 # ── GOV-004 §8: Correlation ID ContextVar ────────────────────────────────────
 
 _correlation_id: ContextVar[str] = ContextVar("correlation_id", default="")
@@ -83,7 +87,7 @@ def _resolve_log_level(level: int | None) -> int:
     """
     env_level = os.environ.get("LOG_LEVEL", "").upper()
     level_map = {
-        "TRACE": 5,
+        "TRACE": TRACE_LEVEL,
         "DEBUG": logging.DEBUG,
         "INFO": logging.INFO,
         "WARN": logging.WARNING,
@@ -102,8 +106,15 @@ def _resolve_log_level(level: int | None) -> int:
 def _configure_structlog(resolved_level: int) -> None:
     """Configure structlog processors and binding.
 
+    Note: structlog only supports standard log levels (0,10,20,30,40,50).
+    TRACE(5) maps to DEBUG(10) for structlog filtering.
+
     Refs: GOV-006 §5.1
     """
+    # structlog requires standard levels for make_filtering_bound_logger
+    structlog_level = (
+        max(resolved_level, logging.DEBUG)
+    )
     structlog.configure(
         processors=[
             structlog.contextvars.merge_contextvars,
@@ -114,7 +125,7 @@ def _configure_structlog(resolved_level: int) -> None:
             _add_service_name,
             structlog.processors.JSONRenderer(),
         ],
-        wrapper_class=structlog.make_filtering_bound_logger(resolved_level),
+        wrapper_class=structlog.make_filtering_bound_logger(structlog_level),
         context_class=dict,
         logger_factory=structlog.stdlib.LoggerFactory(),
         cache_logger_on_first_use=True,

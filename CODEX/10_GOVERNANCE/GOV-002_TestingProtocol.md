@@ -6,7 +6,7 @@ status: APPROVED
 owner: architect
 agents: [all]
 tags: [testing, verification, governance, standards, quality]
-related: [GOV-001]
+related: [GOV-001, GOV-003, BLU-001, BLU-002, VER-001, VER-002, DEF-001]
 created: 2026-03-04
 updated: 2026-03-04
 version: 2.0.0

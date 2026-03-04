@@ -61,3 +61,20 @@ ignore = [
     "E501",     # Docstrings may exceed 88 chars for readability
     "RUF059",   # Unused unpacked variables in test assertions
 ]
+
+# GOV-003 §6.5: Mutation testing config (DEF-001-09)
+[tool.mutmut]
+paths_to_mutate = "biosphere/"
+tests_dir = "tests/"
+runner = "python -m pytest -x --tb=short"
+
+# GOV-003 §6.5: Cyclomatic complexity (DEF-001-06)
+# Run: radon cc biosphere/ -a -nc
+# Target: No function > CC 10
+
+# GOV-003 §6.5: Security scanning (DEF-001-06)
+# Run: bandit -r biosphere/ -c pyproject.toml
+[tool.bandit]
+exclude_dirs = ["tests", ".venv"]
+skips = ["B101"]  # assert used for correctness proofs (GOV-003 §2 Rule 5)
+
