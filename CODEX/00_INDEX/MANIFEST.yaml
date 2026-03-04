@@ -253,6 +253,17 @@ documents:
       point, then runs full GOV-002 governance audit. Delivers a working
       `python -m biosphere` application.
 
+  - id: EVO-004
+    path: CODEX/60_EVOLUTION/EVO-004_TUIDashboardEnhancement.md
+    title: "Enhancement: Simulation Dashboard TUI"
+    type: reference
+    status: COMPLETE
+    tags: [feature, ui, enhancement, tui]
+    agents: [coder, tester]
+    summary: >
+      TUI dashboard overhaul. Colored dot grid, titled panels,
+      real-time entropy/reward metrics, dark theme, reset key.
+
   # ── 40_VERIFICATION ──────────────────────────────────────────────────────────
   - id: VER-001
     path: CODEX/40_VERIFICATION/VER-001_TestVerificationReport.md
