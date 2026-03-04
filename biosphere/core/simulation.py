@@ -11,7 +11,10 @@ Public API:
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Protocol, runtime_checkable
+
+if TYPE_CHECKING:
+    import structlog
 
 import numpy as np
 from scipy.ndimage import gaussian_filter  # type: ignore[import-untyped]
@@ -78,9 +81,19 @@ class SimulationEngine:
     5. Reproduction (sigmoid probability)
     6. Mortality (age-based + starvation)
 
-    Invalid interventions are handled via callback injection —
-    no structlog import in the core module.
+    Invalid interventions are handled via callback injection.
+    Structured logging per GOV-006.
     """
+
+    # Module-level logger (lazy-init so structlog can be configured first)
+    _logger: structlog.stdlib.BoundLogger | None = None
+
+    @classmethod
+    def _get_logger(cls) -> structlog.stdlib.BoundLogger:
+        if cls._logger is None:
+            import structlog as _structlog
+            cls._logger = _structlog.get_logger(component="simulation")
+        return cls._logger
 
     def __init__(
         self,
@@ -105,6 +118,12 @@ class SimulationEngine:
         self._tick: int = 0
         self._state: GridState = self._initialize_state()
         self._previous_state: GridState | None = None
+        self._get_logger().info(
+            "engine.init",
+            seed=seed,
+            growth_rate=params.growth_rate,
+            grid_size=f"{GRID_H}x{GRID_W}",
+        )
 
     # ── Public API ────────────────────────────────────────────────────────────
 
@@ -143,6 +162,11 @@ class SimulationEngine:
         self._check_nan_rollback()
 
         self._tick += 1
+        self._get_logger().debug(
+            "engine.step.exit",
+            tick=self._tick,
+            n_interventions=len(interventions) if interventions else 0,
+        )
         return self._deep_copy(self._state)
 
     def get_state(self) -> GridState:
@@ -730,6 +754,12 @@ class SimulationEngine:
 
         # Dampen energy by 0.9
         self._state["organism_attrs"][:, :, :, 1] *= 0.9
+
+        self._get_logger().warning(
+            "engine.nan_rollback",
+            tick=self._tick,
+            message="NaN detected — rolled back to previous state, energy dampened",
+        )
 
     # ── Utilities ─────────────────────────────────────────────────────────────
 

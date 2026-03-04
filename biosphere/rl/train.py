@@ -15,6 +15,7 @@ import uuid
 from pathlib import Path
 from typing import Any
 
+import structlog
 import yaml
 from sb3_contrib import MaskablePPO
 from sb3_contrib.common.wrappers import ActionMasker
@@ -98,8 +99,17 @@ def train(
         verbose=0,
     )
 
+    log = structlog.get_logger(component="training")
+    log.info(
+        "training.start",
+        total_timesteps=n_timesteps,
+        learning_rate=float(train_cfg.get("learning_rate", 3e-4)),
+    )
+
     # Train
     model.learn(total_timesteps=n_timesteps)
+
+    log.info("training.complete", total_timesteps=n_timesteps)
 
     # Save checkpoint with correlation ID (GOV-006)
     correlation_id = uuid.uuid4().hex[:12]
@@ -107,5 +117,11 @@ def train(
     checkpoint_dir.mkdir(parents=True, exist_ok=True)
     checkpoint_path = checkpoint_dir / f"biosphere_ppo_{correlation_id}"
     model.save(str(checkpoint_path))
+
+    log.info(
+        "training.checkpoint_saved",
+        path=str(checkpoint_path),
+        correlation_id=correlation_id,
+    )
 
     return checkpoint_path

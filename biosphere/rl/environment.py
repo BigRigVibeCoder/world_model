@@ -6,6 +6,7 @@ Provides BiosphereEnv(gym.Env) with:
   - Dict observation space
   - Flat (37,) action masks for MaskablePPO
   - Static codec API: build_observation, compute_action_masks, decode_action
+  - Structured logging per GOV-006
 """
 
 from __future__ import annotations
@@ -14,6 +15,7 @@ from typing import Any
 
 import gymnasium as gym
 import numpy as np
+import structlog
 from gymnasium import spaces
 
 from biosphere.core.errors import InterventionError
@@ -106,6 +108,7 @@ class BiosphereEnv(gym.Env[dict[str, np.ndarray], np.ndarray]):
         )
         self._entropy_history = np.zeros(ENTROPY_WINDOW, dtype=np.float32)
         self._current_step = 0
+        self._log = structlog.get_logger(component="environment")
 
         # Action space: MultiDiscrete per BLU-002 §3.1
         self.action_space = spaces.MultiDiscrete(
@@ -160,6 +163,11 @@ class BiosphereEnv(gym.Env[dict[str, np.ndarray], np.ndarray]):
         state = self._engine.get_state()
         obs = BiosphereEnv.build_observation(state, self._entropy_history)
         info: dict[str, Any] = {"tick": self._engine.tick}
+        self._log.info(
+            "env.reset",
+            seed=seed or 42,
+            tick=self._engine.tick,
+        )
         return obs, info
 
     def step(
@@ -202,6 +210,19 @@ class BiosphereEnv(gym.Env[dict[str, np.ndarray], np.ndarray]):
             "tick": self._engine.tick,
             "intervention_errors": len(self._intervention_errors),
         }
+
+        if terminated:
+            self._log.info(
+                "env.terminated",
+                step=self._current_step,
+                reason="extinction",
+            )
+        elif truncated:
+            self._log.info(
+                "env.truncated",
+                step=self._current_step,
+                max_steps=MAX_EPISODE_STEPS,
+            )
 
         return obs, reward, terminated, truncated, info
 

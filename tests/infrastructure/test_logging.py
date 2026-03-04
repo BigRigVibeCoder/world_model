@@ -79,7 +79,7 @@ class TestCrashArtifact:
             details={"reason": "testing"},
         )
 
-        filepath = _write_crash_artifact(crash_dir, type(err), err)
+        filepath = _write_crash_artifact(crash_dir, type(err), err, None)
         assert filepath.exists()
         assert filepath.suffix == ".jsonl"
 
@@ -100,7 +100,7 @@ class TestCrashArtifact:
         crash_dir.mkdir()
 
         err = ValueError("generic error")
-        filepath = _write_crash_artifact(crash_dir, type(err), err)
+        filepath = _write_crash_artifact(crash_dir, type(err), err, None)
         assert filepath.exists()
 
         with open(filepath) as f:
@@ -119,7 +119,7 @@ class TestCrashArtifact:
         crash_dir.mkdir()
 
         err = RuntimeError("test")
-        filepath = _write_crash_artifact(crash_dir, type(err), err)
+        filepath = _write_crash_artifact(crash_dir, type(err), err, None)
         assert filepath.name.startswith("crash_")
         assert filepath.name.endswith(".jsonl")
         # Should have date component
@@ -138,7 +138,7 @@ class TestCrashArtifact:
             error_code="JSON-001",
             details={"special_chars": "quotes\"and\\slashes"},
         )
-        filepath = _write_crash_artifact(crash_dir, type(err), err)
+        filepath = _write_crash_artifact(crash_dir, type(err), err, None)
 
         with open(filepath) as f:
             for line in f:

@@ -162,7 +162,7 @@ class TestCrashArtifact:
             details={"reason": "testing"},
         )
 
-        filepath = _write_crash_artifact(crash_dir, type(err), err)
+        filepath = _write_crash_artifact(crash_dir, type(err), err, None)
         assert filepath.exists()
         assert filepath.suffix == ".jsonl"
 
@@ -184,7 +184,7 @@ class TestCrashArtifact:
         crash_dir.mkdir()
 
         err = ValueError("generic error")
-        filepath = _write_crash_artifact(crash_dir, type(err), err)
+        filepath = _write_crash_artifact(crash_dir, type(err), err, None)
         assert filepath.exists()
 
         with open(filepath) as f:
