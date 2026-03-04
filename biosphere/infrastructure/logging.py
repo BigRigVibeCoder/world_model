@@ -75,34 +75,12 @@ def _add_service_name(
     return event_dict
 
 
-def setup_logging(
-    *,
-    service_name: str = "biosphere",
-    log_dir: str | Path = "logs",
-    crash_dir: str | Path = "logs/crashes",
-    level: int | None = None,
-) -> None:
-    """Configure structured logging per GOV-006.
+def _resolve_log_level(level: int | None) -> int:
+    """Resolve effective log level from env var or explicit param.
 
-    Sets up:
-    - structlog with JSON rendering
-    - File handler writing JSONL to log_dir
-    - Crash artifact directory for unhandled exceptions
-    - Global sys.excepthook for crash capture
-    - LOG_LEVEL environment variable override (GOV-006 §11)
-
-    Args:
-        service_name: Name of this service (GOV-006 §3.1).
-        log_dir: Directory for general log files.
-        crash_dir: Directory for crash artifact JSONL files.
-        level: Minimum log level (overridden by LOG_LEVEL env var).
-
-    Refs: GOV-006 §5.1, §11
+    Priority: LOG_LEVEL env var > explicit `level` arg > INFO default.
+    Refs: GOV-006 §11
     """
-    global SERVICE_NAME  # noqa: PLW0603
-    SERVICE_NAME = service_name
-
-    # GOV-006 §11: Environment variable override
     env_level = os.environ.get("LOG_LEVEL", "").upper()
     level_map = {
         "TRACE": 5,
@@ -115,32 +93,17 @@ def setup_logging(
         "CRITICAL": logging.CRITICAL,
     }
     if env_level and env_level in level_map:
-        resolved_level = level_map[env_level]
-    elif level is not None:
-        resolved_level = level
-    else:
-        resolved_level = logging.INFO
+        return level_map[env_level]
+    if level is not None:
+        return level
+    return logging.INFO
 
-    log_path = Path(log_dir)
-    crash_path = Path(crash_dir)
-    log_path.mkdir(parents=True, exist_ok=True)
-    crash_path.mkdir(parents=True, exist_ok=True)
 
-    # Configure stdlib logging as structlog's backend
-    logging.basicConfig(
-        format="%(message)s",
-        level=resolved_level,
-        handlers=[
-            logging.FileHandler(
-                log_path / "biosphere.log",
-                mode="a",
-                encoding="utf-8",
-            ),
-            logging.StreamHandler(sys.stderr),
-        ],
-        force=True,
-    )
+def _configure_structlog(resolved_level: int) -> None:
+    """Configure structlog processors and binding.
 
+    Refs: GOV-006 §5.1
+    """
     structlog.configure(
         processors=[
             structlog.contextvars.merge_contextvars,
@@ -156,6 +119,47 @@ def setup_logging(
         logger_factory=structlog.stdlib.LoggerFactory(),
         cache_logger_on_first_use=True,
     )
+
+
+def setup_logging(
+    *,
+    service_name: str = "biosphere",
+    log_dir: str | Path = "logs",
+    crash_dir: str | Path = "logs/crashes",
+    level: int | None = None,
+) -> None:
+    """Configure structured logging per GOV-006.
+
+    Sets up structlog with JSON rendering, file handler, crash artifacts,
+    and LOG_LEVEL env var override.
+
+    Refs: GOV-006 §5.1, §11
+    """
+    global SERVICE_NAME
+    SERVICE_NAME = service_name
+
+    resolved_level = _resolve_log_level(level)
+
+    log_path = Path(log_dir)
+    crash_path = Path(crash_dir)
+    log_path.mkdir(parents=True, exist_ok=True)
+    crash_path.mkdir(parents=True, exist_ok=True)
+
+    logging.basicConfig(
+        format="%(message)s",
+        level=resolved_level,
+        handlers=[
+            logging.FileHandler(
+                log_path / "biosphere.log",
+                mode="a",
+                encoding="utf-8",
+            ),
+            logging.StreamHandler(sys.stderr),
+        ],
+        force=True,
+    )
+
+    _configure_structlog(resolved_level)
 
     # Install global exception hook for crash artifacts (GOV-004 §4)
     _original_hook = sys.excepthook
@@ -197,6 +201,7 @@ def trace_execution[F: Callable[..., Any]](func: F) -> F:
 
     @functools.wraps(func)
     def wrapper(*args: Any, **kwargs: Any) -> Any:
+        """Tracing wrapper — logs entry/exit/exception for the decorated function."""
         func_name = f"{func.__module__}.{func.__qualname__}"
         logger.debug(
             f"{func_name}.enter",

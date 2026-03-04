@@ -17,31 +17,25 @@ if TYPE_CHECKING:
     import structlog
 
 import numpy as np
-from scipy.ndimage import gaussian_filter  # type: ignore[import-untyped]
 
+from biosphere.core import phases
 from biosphere.core.errors import InterventionError, SimulationError
 from biosphere.core.state import (
     GRID_H,
     GRID_W,
-    MAX_PER_CELL,
     SPECIES_EMPTY,
     SPECIES_PLANT,
-    SPECIES_PREDATOR,
-    SPECIES_PREY,
     GridState,
     Intervention,
     InterventionType,
 )
+from biosphere.infrastructure.logging import trace_execution
 
 # ── Validation Constants ──────────────────────────────────────────────────────
 MAX_AGE_LIMIT: int = 10_000
 WEATHER_SIGMA_MAX: float = 10.0
 
-# ── Initialization Constants ─────────────────────────────────────────────────
-INIT_PLANT_DENSITY: float = 0.3
-INIT_PREY_DENSITY: float = 0.1
-INIT_PREDATOR_DENSITY: float = 0.03
-MOVEMENT_PROBABILITY: float = 0.2
+
 
 
 @runtime_checkable
@@ -127,6 +121,7 @@ class SimulationEngine:
 
     # ── Public API ────────────────────────────────────────────────────────────
 
+    @trace_execution
     def step(
         self, interventions: list[Intervention] | None = None,
     ) -> GridState:
@@ -230,89 +225,11 @@ class SimulationEngine:
     def _initialize_state(self) -> GridState:
         """Generate the initial world state.
 
-        Creates a randomized but ecologically plausible starting condition:
-        - Terrain: smooth random elevation, temperature gradient, humidity
-        - Species: scattered plants, few prey, fewer predators
-        - Resources: correlated with terrain
-        - Weather: uniform moderate conditions
+        Delegates to phases.init_terrain/init_organisms/init_resources.
         """
-        rng = self._rng
-
-        # Terrain: smooth random fields
-        terrain = np.zeros((GRID_H, GRID_W, 3), dtype=np.float32)
-        terrain[:, :, 0] = gaussian_filter(
-            rng.random((GRID_H, GRID_W), dtype=np.float32), sigma=5.0,
-        )  # elevation
-        terrain[:, :, 1] = np.linspace(
-            20.0, 35.0, GRID_H, dtype=np.float32,
-        )[:, np.newaxis] + rng.normal(
-            0, 2, (GRID_H, GRID_W),
-        ).astype(np.float32)  # temperature
-        terrain[:, :, 2] = np.clip(
-            gaussian_filter(
-                rng.random((GRID_H, GRID_W), dtype=np.float32), sigma=3.0,
-            ),
-            0.0,
-            1.0,
-        )  # humidity
-
-        # Species grid: sparse initial population
-        species_grid = np.zeros(
-            (GRID_H, GRID_W, MAX_PER_CELL), dtype=np.uint8,
-        )
-        # Plants: ~30% of cells get 1-3 plants
-        plant_mask = rng.random((GRID_H, GRID_W)) < INIT_PLANT_DENSITY
-        for row, col in zip(*np.where(plant_mask), strict=True):
-            n_plants = rng.integers(1, 4)
-            species_grid[row, col, :n_plants] = SPECIES_PLANT
-
-        # Prey: ~10% of cells get 1 prey
-        prey_mask = rng.random((GRID_H, GRID_W)) < INIT_PREY_DENSITY
-        for row, col in zip(*np.where(prey_mask), strict=True):
-            empty_slots = np.where(
-                species_grid[row, col] == SPECIES_EMPTY,
-            )[0]
-            if len(empty_slots) > 0:
-                species_grid[row, col, empty_slots[0]] = SPECIES_PREY
-
-        # Predators: ~3% of cells get 1 predator
-        pred_mask = rng.random((GRID_H, GRID_W)) < INIT_PREDATOR_DENSITY
-        for row, col in zip(*np.where(pred_mask), strict=True):
-            empty_slots = np.where(
-                species_grid[row, col] == SPECIES_EMPTY,
-            )[0]
-            if len(empty_slots) > 0:
-                species_grid[row, col, empty_slots[0]] = SPECIES_PREDATOR
-
-        # Organism attributes: health, energy, age
-        organism_attrs = np.zeros(
-            (GRID_H, GRID_W, MAX_PER_CELL, 3), dtype=np.float32,
-        )
-        alive_mask = species_grid > SPECIES_EMPTY
-        organism_attrs[alive_mask, 0] = rng.uniform(
-            0.5, 1.0, size=int(alive_mask.sum()),
-        ).astype(np.float32)  # health
-        organism_attrs[alive_mask, 1] = rng.uniform(
-            0.3, 0.8, size=int(alive_mask.sum()),
-        ).astype(np.float32)  # energy
-        organism_attrs[alive_mask, 2] = rng.uniform(
-            0.0, 50.0, size=int(alive_mask.sum()),
-        ).astype(np.float32)  # age
-
-        # Resources: correlated with terrain humidity
-        resources = np.zeros((GRID_H, GRID_W, 2), dtype=np.float32)
-        resources[:, :, 0] = np.clip(
-            terrain[:, :, 2] * 0.8
-            + rng.normal(0, 0.1, (GRID_H, GRID_W)).astype(np.float32),
-            0.0,
-            1.0,
-        )  # plant_biomass
-        resources[:, :, 1] = np.clip(
-            terrain[:, :, 2] * 0.9
-            + rng.normal(0, 0.05, (GRID_H, GRID_W)).astype(np.float32),
-            0.0,
-            1.0,
-        )  # water
+        terrain = phases.init_terrain(self._rng)
+        species_grid, organism_attrs = phases.init_organisms(self._rng)
+        resources = phases.init_resources(terrain, self._rng)
 
         # Weather: moderate starting conditions
         weather = np.zeros((GRID_H, GRID_W, 2), dtype=np.float32)
@@ -407,312 +324,31 @@ class SimulationEngine:
         sg[cull_mask] = SPECIES_EMPTY
         oa[cull_mask] = 0.0
 
-    # ── Phase 1: Weather Diffusion ────────────────────────────────────────────
+    # ── Phase Delegates (see biosphere/core/phases.py) ──────────────────────
 
     def _phase_weather_diffusion(self) -> None:
-        """Spatially diffuse weather patterns using Gaussian blur."""
-        sigma = self._params.weather_sigma
-        if sigma > 0.0:
-            weather = self._state["weather"]
-            # Add small random perturbation before diffusion
-            rng = self._rng
-            noise = rng.normal(0, 0.02, weather.shape).astype(np.float32)
-            weather += noise
-            for ch in range(weather.shape[2]):
-                weather[:, :, ch] = gaussian_filter(
-                    weather[:, :, ch], sigma=sigma,
-                ).astype(np.float32)
-            np.clip(weather, 0.0, 1.0, out=weather)
-
-    # ── Phase 2: Resource Growth ──────────────────────────────────────────────
+        """Delegate to phases.phase_weather_diffusion."""
+        phases.phase_weather_diffusion(self._state, self._params, self._rng)
 
     def _phase_resource_growth(self) -> None:
-        """Logistic resource growth: dP/dt = rP(1 - P/K).
-
-        Plant biomass grows based on sunlight and precipitation.
-        Water replenishes based on precipitation.
-        """
-        r = self._params.growth_rate
-        resources = self._state["resources"]
-        weather = self._state["weather"]
-
-        # Plant biomass: logistic growth modulated by sunlight
-        sunlight = weather[:, :, 1]
-        biomass = resources[:, :, 0]
-        growth = r * biomass * (1.0 - biomass) * sunlight
-        resources[:, :, 0] = np.clip(biomass + growth, 0.0, 1.0)
-
-        # Water: replenishment from precipitation
-        precip = weather[:, :, 0]
-        water = resources[:, :, 1]
-        water_delta = 0.1 * precip - 0.05  # net change
-        resources[:, :, 1] = np.clip(water + water_delta, 0.0, 1.0)
-
-    # ── Phase 3: Movement ─────────────────────────────────────────────────────
+        """Delegate to phases.phase_resource_growth."""
+        phases.phase_resource_growth(self._state, self._params)
 
     def _phase_movement(self) -> None:
-        """Random neighbor migration for mobile organisms.
-
-        Prey and predators migrate to adjacent cells probabilistically.
-        Plants do not move. Uses vectorized approach: randomly shift
-        a fraction of organisms to adjacent cells with available slots.
-        """
-        sg = self._state["species_grid"]
-        oa = self._state["organism_attrs"]
-
-        for species_id in (SPECIES_PREY, SPECIES_PREDATOR):
-            mask = sg == species_id
-            if not mask.any():
-                continue
-
-            # ~20% of organisms attempt to move each tick
-            movers = mask & (
-                self._rng.random(mask.shape).astype(np.float32) < MOVEMENT_PROBABILITY
-            )
-            if not movers.any():
-                continue
-
-            # Collapse to cell level: pick one random mover per cell
-            mover_cells = np.any(movers, axis=2)
-            if not mover_cells.any():
-                continue
-
-            # For each cell with a mover, compute target cell
-            cell_rows, cell_cols = np.where(mover_cells)
-            n_movers = len(cell_rows)
-
-            # Random direction: 0=N, 1=S, 2=W, 3=E
-            dirs = self._rng.integers(0, 4, size=n_movers)
-            dr = np.array([-1, 1, 0, 0])[dirs]
-            dc = np.array([0, 0, -1, 1])[dirs]
-            target_rows = cell_rows + dr
-            target_cols = cell_cols + dc
-
-            # Boundary mask
-            valid = (
-                (target_rows >= 0)
-                & (target_rows < GRID_H)
-                & (target_cols >= 0)
-                & (target_cols < GRID_W)
-            )
-
-            # Process only valid moves
-            for idx in np.where(valid)[0]:
-                sr, sc = int(cell_rows[idx]), int(cell_cols[idx])
-                tr, tc = int(target_rows[idx]), int(target_cols[idx])
-
-                # Find first mover slot in source cell
-                src_slots = np.where(movers[sr, sc])[0]
-                if len(src_slots) == 0:
-                    continue
-                ss = int(src_slots[0])
-
-                # Find empty slot in target cell
-                tgt_empty = np.where(sg[tr, tc] == SPECIES_EMPTY)[0]
-                if len(tgt_empty) == 0:
-                    continue
-                ts = int(tgt_empty[0])
-
-                # Move
-                sg[tr, tc, ts] = sg[sr, sc, ss]
-                oa[tr, tc, ts] = oa[sr, sc, ss]
-                sg[sr, sc, ss] = SPECIES_EMPTY
-                oa[sr, sc, ss] = 0.0
-                movers[sr, sc, ss] = False
-
-    # ── Phase 4: Consumption ──────────────────────────────────────────────────
+        """Delegate to phases.phase_movement."""
+        phases.phase_movement(self._state, self._rng)
 
     def _phase_consumption(self) -> None:
-        """Consumption phase: organisms consume resources or prey.
-
-        Plants: absorb resources (biomass) from the cell.
-        Prey: consume plant biomass → gain energy.
-        Predators: consume prey → gain energy (Holling Type II approx).
-        """
-        sg = self._state["species_grid"]
-        oa = self._state["organism_attrs"]
-        resources = self._state["resources"]
-
-        # Plants: absorb biomass → energy
-        plant_mask = sg == SPECIES_PLANT
-        if plant_mask.any():
-            biomass_available = resources[:, :, 0]
-            n_plants = plant_mask.sum(axis=2).astype(np.float32)
-            # Each plant gets an equal share
-            share = np.where(
-                n_plants > 0,
-                biomass_available * 0.1 / np.maximum(n_plants, 1.0),
-                0.0,
-            )
-            # Add energy to plants
-            energy_gain = share[:, :, np.newaxis] * plant_mask.astype(
-                np.float32,
-            )
-            oa[:, :, :, 1] = np.clip(
-                oa[:, :, :, 1] + energy_gain, 0.0, 1.0,
-            )
-            # Reduce biomass
-            consumption = share * n_plants * 0.05
-            resources[:, :, 0] = np.clip(
-                biomass_available - consumption, 0.0, 1.0,
-            )
-
-        # Prey: consume plant biomass → gain energy
-        prey_mask = sg == SPECIES_PREY
-        if prey_mask.any():
-            biomass = resources[:, :, 0]
-            n_prey = prey_mask.sum(axis=2).astype(np.float32)
-            # Holling Type II: C = aN/(1+ahN), simplified
-            a = 0.3  # attack rate
-            h = 0.1  # handling time
-            available = biomass
-            consumed = np.where(
-                n_prey > 0,
-                a * available / (1.0 + a * h * n_prey),
-                0.0,
-            )
-            energy_per_prey = np.where(
-                n_prey > 0, consumed * 0.8 / np.maximum(n_prey, 1.0), 0.0,
-            )
-            oa[:, :, :, 1] = np.clip(
-                oa[:, :, :, 1]
-                + energy_per_prey[:, :, np.newaxis]
-                * prey_mask.astype(np.float32),
-                0.0,
-                1.0,
-            )
-            resources[:, :, 0] = np.clip(biomass - consumed, 0.0, 1.0)
-
-        # Predators: consume prey → gain energy
-        pred_mask = sg == SPECIES_PREDATOR
-        if pred_mask.any():
-            n_prey_per_cell = prey_mask.sum(axis=2).astype(np.float32)
-            n_pred = pred_mask.sum(axis=2).astype(np.float32)
-            # Each predator captures prey probabilistically
-            catch_rate = np.where(
-                n_prey_per_cell > 0,
-                np.minimum(0.3 * n_prey_per_cell / np.maximum(n_pred, 1.0), 1.0),
-                0.0,
-            )
-            energy_from_prey = catch_rate * 0.7  # consumption efficiency
-            oa[:, :, :, 1] = np.clip(
-                oa[:, :, :, 1]
-                + energy_from_prey[:, :, np.newaxis]
-                * pred_mask.astype(np.float32),
-                0.0,
-                1.0,
-            )
-
-    # ── Phase 5: Reproduction ─────────────────────────────────────────────────
+        """Delegate to phases.phase_consumption."""
+        phases.phase_consumption(self._state)
 
     def _phase_reproduction(self) -> None:
-        """Reproduction: organisms with sufficient energy may reproduce.
-
-        Sigmoid probability: p = 1/(1 + exp(-k(E - threshold))).
-        New organism placed in an empty slot in the same cell.
-        Vectorized: identify reproducers and cells with empty slots,
-        then batch-assign offspring.
-        """
-        sg = self._state["species_grid"]
-        oa = self._state["organism_attrs"]
-        threshold = self._params.reproduction_threshold
-
-        for species_id in (SPECIES_PLANT, SPECIES_PREY, SPECIES_PREDATOR):
-            mask = sg == species_id
-            if not mask.any():
-                continue
-
-            energy = oa[:, :, :, 1]
-            # Sigmoid reproduction probability
-            k = 10.0
-            prob = 1.0 / (1.0 + np.exp(-k * (energy - threshold)))
-            reproduce = mask & (
-                self._rng.random(mask.shape).astype(np.float32) < prob
-            )
-
-            if not reproduce.any():
-                continue
-
-            # Cells that have reproducers AND empty slots
-            has_reproducer = np.any(reproduce, axis=2)
-            has_empty = np.any(sg == SPECIES_EMPTY, axis=2)
-            candidate_cells = has_reproducer & has_empty
-
-            if not candidate_cells.any():
-                continue
-
-            cell_rows, cell_cols = np.where(candidate_cells)
-            for idx in range(len(cell_rows)):
-                r, c = int(cell_rows[idx]), int(cell_cols[idx])
-                # Find first reproducer
-                repro_slots = np.where(reproduce[r, c])[0]
-                if len(repro_slots) == 0:
-                    continue
-                s = int(repro_slots[0])
-                # Find first empty slot
-                empty_slots = np.where(sg[r, c] == SPECIES_EMPTY)[0]
-                if len(empty_slots) == 0:
-                    continue
-                ns = int(empty_slots[0])
-
-                # Create offspring
-                sg[r, c, ns] = species_id
-                oa[r, c, ns, 0] = 0.8  # health
-                oa[r, c, ns, 1] = 0.4  # energy (child)
-                oa[r, c, ns, 2] = 0.0  # age
-                # Parent loses energy
-                oa[r, c, s, 1] *= 0.5
-
-    # ── Phase 6: Mortality ────────────────────────────────────────────────────
+        """Delegate to phases.phase_reproduction."""
+        phases.phase_reproduction(self._state, self._params, self._rng)
 
     def _phase_mortality(self) -> None:
-        """Mortality: organisms die from age, starvation, or low health.
-
-        - Metabolic cost: energy -= metabolic_rate per tick
-        - Age increment: age += 1.0
-        - Death conditions: energy <= 0, health <= 0, or age > max_age
-        """
-        sg = self._state["species_grid"]
-        oa = self._state["organism_attrs"]
-        alive = sg != SPECIES_EMPTY
-
-        if not alive.any():
-            return
-
-        # Metabolic cost
-        oa[:, :, :, 1] -= self._params.metabolic_rate * alive.astype(
-            np.float32,
-        )
-
-        # Age increment
-        oa[:, :, :, 2] += alive.astype(np.float32)
-
-        # Health decay (slow)
-        oa[:, :, :, 0] -= 0.001 * alive.astype(np.float32)
-
-        # Death: energy depleted
-        starved = alive & (oa[:, :, :, 1] <= 0.0)
-        sg[starved] = SPECIES_EMPTY
-        oa[starved] = 0.0
-
-        # Death: health depleted
-        dead_health = alive & (oa[:, :, :, 0] <= 0.0)
-        sg[dead_health] = SPECIES_EMPTY
-        oa[dead_health] = 0.0
-
-        # Death: old age (prey)
-        prey_old = (sg == SPECIES_PREY) & (
-            oa[:, :, :, 2] > self._params.max_age_prey
-        )
-        sg[prey_old] = SPECIES_EMPTY
-        oa[prey_old] = 0.0
-
-        # Death: old age (predator)
-        pred_old = (sg == SPECIES_PREDATOR) & (
-            oa[:, :, :, 2] > self._params.max_age_predator
-        )
-        sg[pred_old] = SPECIES_EMPTY
-        oa[pred_old] = 0.0
+        """Delegate to phases.phase_mortality."""
+        phases.phase_mortality(self._state, self._params)
 
     # ── NaN Protection ────────────────────────────────────────────────────────
 

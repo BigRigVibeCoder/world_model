@@ -42,11 +42,22 @@ target-version = "py312"
 line-length = 88
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "I", "N", "UP", "B", "A", "COM", "C4", "PIE", "PT", "SIM", "PLR"]
+# GOV-003 §12.1: Progressive adoption towards select = ["ALL"]
+select = ["E", "F", "W", "I", "N", "UP", "B", "A", "COM", "C4", "PIE", "PT", "SIM", "PLR", "RUF", "TCH", "TID", "ICN", "RET", "RSE", "FLY", "PERF", "FURB", "LOG"]
+# Progressive suppressions — revisit each sprint
+ignore = [
+    "RUF002",   # Unicode chars (×) in docstrings are intentional
+    "RUF003",   # Unicode chars (–, ×) in comments are mathematical notation
+    "RUF012",   # Textual BINDINGS pattern uses mutable class default
+    "TC001",    # Application imports in type-checking — API clarity
+    "TC002",    # Third-party imports in type-checking — numpy needed at runtime
+    "TC003",    # Stdlib imports in type-checking — Path used at runtime
+]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**/*.py" = [
     "PLR2004",  # Magic numbers are expected in test assertions
     "PT006",    # pytest.mark.parametrize accepts strings
     "E501",     # Docstrings may exceed 88 chars for readability
+    "RUF059",   # Unused unpacked variables in test assertions
 ]

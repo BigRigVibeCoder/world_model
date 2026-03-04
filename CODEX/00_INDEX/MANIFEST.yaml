@@ -21,7 +21,7 @@
 # ============================================================================
 
 schema_version: "1.0.0"
-project: "agentic-architect-template"
+project: "biosphere"
 generated: "2026-03-04"
 
 # ── Area Definitions ──────────────────────────────────────────────────────────
@@ -241,3 +241,15 @@ documents:
       Final sprint. Wires simulation, RL agent, and TUI into unified CLI entry
       point, then runs full GOV-002 governance audit. Delivers a working
       `python -m biosphere` application.
+
+  # ── 50_DEFECTS ───────────────────────────────────────────────────────────────
+  - id: DEF-001
+    path: CODEX/50_DEFECTS/DEF-001_GovernanceGapAnalysis.md
+    title: "Governance Compliance Gap Analysis"
+    type: reference
+    status: REVIEW
+    tags: [defect, governance, compliance, audit]
+    agents: [all]
+    summary: >
+      Systematic audit of biosphere codebase against all 6 governance docs.
+      22 gaps identified: 3 P0, 5 P1, 8 P2, 6 P3. Sprint 3 remediates.

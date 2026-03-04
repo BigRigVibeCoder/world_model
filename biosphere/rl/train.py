@@ -21,6 +21,7 @@ from sb3_contrib import MaskablePPO
 from sb3_contrib.common.wrappers import ActionMasker
 
 from biosphere.infrastructure.config import SimulationConfig
+from biosphere.infrastructure.logging import set_correlation_id, trace_execution
 from biosphere.rl.environment import BiosphereEnv
 
 
@@ -43,12 +44,13 @@ def load_training_config(path: str | Path = "config/training.yaml") -> dict[str,
     config_path = Path(path)
     if not config_path.exists():
         msg = f"Training config not found: {config_path}"
-        raise FileNotFoundError(msg)
+        raise FileNotFoundError(msg) from None
 
     with open(config_path, encoding="utf-8") as f:
         return dict(yaml.safe_load(f))
 
 
+@trace_execution
 def train(
     sim_config: SimulationConfig | None = None,
     training_config_path: str | Path = "config/training.yaml",
@@ -66,6 +68,10 @@ def train(
 
     Refs: BLU-002 §3, EVO-002 §4.2
     """
+    # Set correlation ID for this training run (GOV-006 §4)
+    run_id = str(uuid.uuid4())
+    set_correlation_id(run_id)
+
     # Load training config
     train_cfg = load_training_config(training_config_path)
 
