@@ -1,0 +1,4 @@
+# file: /home/bdavidriggins/Documents/world_model/biosphere/infrastructure/config.py
+# hypothesis_version: 6.151.9
+
+[0.0, 0.02, 0.1, 0.6, 1.0, 2.0, 10.0, 300, 500, 10000, 'growth_rate', 'max_age_predator', 'max_age_prey', 'metabolic_rate', 'path', 'raw', 'utf-8', 'weather_sigma']

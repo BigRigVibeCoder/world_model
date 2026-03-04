@@ -1,0 +1,4 @@
+# file: /home/bdavidriggins/Documents/world_model/biosphere/infrastructure/logging.py
+# hypothesis_version: 6.151.9
+
+['%(message)s', 'a', 'biosphere.log', 'error_context', 'event', 'exception_message', 'exception_type', 'iso', 'logs', 'logs/crashes', 'timestamp', 'unhandled_exception', 'utf-8']
