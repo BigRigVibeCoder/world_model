@@ -206,6 +206,17 @@ documents:
       Dependency-ordered from project foundation to final governance audit.
       Each task includes files to modify, acceptance criteria, and verification commands.
 
+  - id: RUN-002
+    path: CODEX/30_RUNBOOKS/RUN-002_UserManual.md
+    title: "Biosphere User Manual"
+    type: reference
+    status: DRAFT
+    tags: [runbook, user-manual, operations, getting-started]
+    agents: [all]
+    summary: >
+      Dead-simple step-by-step guide for installing, running, and using
+      the Biosphere Ecological Balancer. 10 steps from zero to running.
+
   # ── 60_EVOLUTION ────────────────────────────────────────────────────────────
   - id: EVO-001
     path: CODEX/60_EVOLUTION/EVO-001_Sprint1_FoundationCore.md
