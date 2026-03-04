@@ -93,21 +93,21 @@ class Intervention:
 
         if self.type not in InterventionType.__members__.values():
             raise InterventionError(
-                f"Invalid intervention type: {self.type}"
+                f"Invalid intervention type: {self.type}",
             )
         if not (0 <= self.region_row <= GRID_H - 10):
             raise InterventionError(
                 f"region_row {self.region_row} out of range "
-                f"[0, {GRID_H - 10}]"
+                f"[0, {GRID_H - 10}]",
             )
         if not (0 <= self.region_col <= GRID_W - 10):
             raise InterventionError(
                 f"region_col {self.region_col} out of range "
-                f"[0, {GRID_W - 10}]"
+                f"[0, {GRID_W - 10}]",
             )
         if not (0.0 <= self.intensity <= 1.0):
             raise InterventionError(
-                f"intensity {self.intensity} out of range [0.0, 1.0]"
+                f"intensity {self.intensity} out of range [0.0, 1.0]",
             )
         if (
             self.type == InterventionType.CULL_SPECIES
@@ -116,5 +116,5 @@ class Intervention:
         ):
             raise InterventionError(
                 f"target_species {self.target_species} invalid for "
-                f"CULL_SPECIES (must be PREY or PREDATOR)"
+                f"CULL_SPECIES (must be PREY or PREDATOR)",
             )

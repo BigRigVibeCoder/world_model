@@ -14,6 +14,10 @@ from pydantic import BaseModel, field_validator
 
 from biosphere.infrastructure.errors import ConfigurationError
 
+# Validation constants — mirror biosphere.core.simulation
+MAX_AGE_LIMIT: int = 10_000
+WEATHER_SIGMA_MAX: float = 10.0
+
 
 class SimulationConfig(BaseModel):
     """Simulation parameters satisfying SimulationParams protocol.
@@ -49,23 +53,23 @@ class SimulationConfig(BaseModel):
     def _validate_reproduction_threshold(cls, v: float) -> float:
         if not (0.0 < v <= 1.0):
             raise ValueError(
-                f"reproduction_threshold must be in (0.0, 1.0], got {v}"
+                f"reproduction_threshold must be in (0.0, 1.0], got {v}",
             )
         return v
 
     @field_validator("max_age_prey")
     @classmethod
     def _validate_max_age_prey(cls, v: int) -> int:
-        if not (1 <= v <= 10_000):
+        if not (1 <= v <= MAX_AGE_LIMIT):
             raise ValueError(f"max_age_prey must be in [1, 10000], got {v}")
         return v
 
     @field_validator("max_age_predator")
     @classmethod
     def _validate_max_age_predator(cls, v: int) -> int:
-        if not (1 <= v <= 10_000):
+        if not (1 <= v <= MAX_AGE_LIMIT):
             raise ValueError(
-                f"max_age_predator must be in [1, 10000], got {v}"
+                f"max_age_predator must be in [1, 10000], got {v}",
             )
         return v
 
@@ -79,9 +83,9 @@ class SimulationConfig(BaseModel):
     @field_validator("weather_sigma")
     @classmethod
     def _validate_weather_sigma(cls, v: float) -> float:
-        if not (0.0 <= v <= 10.0):
+        if not (0.0 <= v <= WEATHER_SIGMA_MAX):
             raise ValueError(
-                f"weather_sigma must be in [0.0, 10.0], got {v}"
+                f"weather_sigma must be in [0.0, 10.0], got {v}",
             )
         return v
 

@@ -38,7 +38,7 @@ class ApplicationError(Exception):
         self.error_code = error_code
         self.details = details or {}
         self.correlation_id = correlation_id or uuid.uuid4().hex[:12]
-        self.timestamp = datetime.datetime.now(tz=datetime.timezone.utc)
+        self.timestamp = datetime.datetime.now(tz=datetime.UTC)
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize to a dictionary for JSONL logging."""

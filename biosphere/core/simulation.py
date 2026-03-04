@@ -30,6 +30,16 @@ from biosphere.core.state import (
     InterventionType,
 )
 
+# ── Validation Constants ──────────────────────────────────────────────────────
+MAX_AGE_LIMIT: int = 10_000
+WEATHER_SIGMA_MAX: float = 10.0
+
+# ── Initialization Constants ─────────────────────────────────────────────────
+INIT_PLANT_DENSITY: float = 0.3
+INIT_PREY_DENSITY: float = 0.1
+INIT_PREDATOR_DENSITY: float = 0.03
+MOVEMENT_PROBABILITY: float = 0.2
+
 
 @runtime_checkable
 class SimulationParams(Protocol):
@@ -155,37 +165,37 @@ class SimulationEngine:
         """
         if not (0.0 < params.growth_rate <= 1.0):
             raise SimulationError(
-                f"growth_rate must be in (0.0, 1.0], got {params.growth_rate}"
+                f"growth_rate must be in (0.0, 1.0], got {params.growth_rate}",
             )
         if not (0.0 < params.reproduction_threshold <= 1.0):
             raise SimulationError(
                 f"reproduction_threshold must be in (0.0, 1.0], "
-                f"got {params.reproduction_threshold}"
+                f"got {params.reproduction_threshold}",
             )
-        if not (1 <= params.max_age_prey <= 10_000):
+        if not (1 <= params.max_age_prey <= MAX_AGE_LIMIT):
             raise SimulationError(
                 f"max_age_prey must be in [1, 10000], "
-                f"got {params.max_age_prey}"
+                f"got {params.max_age_prey}",
             )
-        if not (1 <= params.max_age_predator <= 10_000):
+        if not (1 <= params.max_age_predator <= MAX_AGE_LIMIT):
             raise SimulationError(
                 f"max_age_predator must be in [1, 10000], "
-                f"got {params.max_age_predator}"
+                f"got {params.max_age_predator}",
             )
         if not (0.0 < params.metabolic_rate <= 1.0):
             raise SimulationError(
                 f"metabolic_rate must be in (0.0, 1.0], "
-                f"got {params.metabolic_rate}"
+                f"got {params.metabolic_rate}",
             )
-        if not (0.0 <= params.weather_sigma <= 10.0):
+        if not (0.0 <= params.weather_sigma <= WEATHER_SIGMA_MAX):
             raise SimulationError(
                 f"weather_sigma must be in [0.0, 10.0], "
-                f"got {params.weather_sigma}"
+                f"got {params.weather_sigma}",
             )
         if params.metabolic_rate > params.reproduction_threshold:
             raise SimulationError(
                 f"metabolic_rate ({params.metabolic_rate}) must be <= "
-                f"reproduction_threshold ({params.reproduction_threshold})"
+                f"reproduction_threshold ({params.reproduction_threshold})",
             )
 
     # ── State Initialization ──────────────────────────────────────────────────
@@ -204,16 +214,16 @@ class SimulationEngine:
         # Terrain: smooth random fields
         terrain = np.zeros((GRID_H, GRID_W, 3), dtype=np.float32)
         terrain[:, :, 0] = gaussian_filter(
-            rng.random((GRID_H, GRID_W), dtype=np.float32), sigma=5.0
+            rng.random((GRID_H, GRID_W), dtype=np.float32), sigma=5.0,
         )  # elevation
         terrain[:, :, 1] = np.linspace(
-            20.0, 35.0, GRID_H, dtype=np.float32
+            20.0, 35.0, GRID_H, dtype=np.float32,
         )[:, np.newaxis] + rng.normal(
-            0, 2, (GRID_H, GRID_W)
+            0, 2, (GRID_H, GRID_W),
         ).astype(np.float32)  # temperature
         terrain[:, :, 2] = np.clip(
             gaussian_filter(
-                rng.random((GRID_H, GRID_W), dtype=np.float32), sigma=3.0
+                rng.random((GRID_H, GRID_W), dtype=np.float32), sigma=3.0,
             ),
             0.0,
             1.0,
@@ -224,14 +234,14 @@ class SimulationEngine:
             (GRID_H, GRID_W, MAX_PER_CELL), dtype=np.uint8,
         )
         # Plants: ~30% of cells get 1-3 plants
-        plant_mask = rng.random((GRID_H, GRID_W)) < 0.3
-        for row, col in zip(*np.where(plant_mask)):
+        plant_mask = rng.random((GRID_H, GRID_W)) < INIT_PLANT_DENSITY
+        for row, col in zip(*np.where(plant_mask), strict=True):
             n_plants = rng.integers(1, 4)
             species_grid[row, col, :n_plants] = SPECIES_PLANT
 
         # Prey: ~10% of cells get 1 prey
-        prey_mask = rng.random((GRID_H, GRID_W)) < 0.1
-        for row, col in zip(*np.where(prey_mask)):
+        prey_mask = rng.random((GRID_H, GRID_W)) < INIT_PREY_DENSITY
+        for row, col in zip(*np.where(prey_mask), strict=True):
             empty_slots = np.where(
                 species_grid[row, col] == SPECIES_EMPTY,
             )[0]
@@ -239,8 +249,8 @@ class SimulationEngine:
                 species_grid[row, col, empty_slots[0]] = SPECIES_PREY
 
         # Predators: ~3% of cells get 1 predator
-        pred_mask = rng.random((GRID_H, GRID_W)) < 0.03
-        for row, col in zip(*np.where(pred_mask)):
+        pred_mask = rng.random((GRID_H, GRID_W)) < INIT_PREDATOR_DENSITY
+        for row, col in zip(*np.where(pred_mask), strict=True):
             empty_slots = np.where(
                 species_grid[row, col] == SPECIES_EMPTY,
             )[0]
@@ -430,7 +440,7 @@ class SimulationEngine:
 
             # ~20% of organisms attempt to move each tick
             movers = mask & (
-                np.random.random(mask.shape).astype(np.float32) < 0.2
+                np.random.random(mask.shape).astype(np.float32) < MOVEMENT_PROBABILITY
             )
             if not movers.any():
                 continue
@@ -697,7 +707,7 @@ class SimulationEngine:
 
         if self._previous_state is None:
             raise SimulationError(
-                "NaN detected in initial state — cannot rollback"
+                "NaN detected in initial state — cannot rollback",
             )
 
         # Check if previous state also had NaN
@@ -709,7 +719,7 @@ class SimulationEngine:
         )
         if prev_nan:
             raise SimulationError(
-                "Two consecutive NaN states detected — unrecoverable"
+                "Two consecutive NaN states detected — unrecoverable",
             )
 
         # Rollback to previous state

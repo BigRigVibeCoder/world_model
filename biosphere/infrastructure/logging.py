@@ -100,7 +100,7 @@ def _write_crash_artifact(
     """
     import datetime
 
-    timestamp = datetime.datetime.now(tz=datetime.timezone.utc)
+    timestamp = datetime.datetime.now(tz=datetime.UTC)
     filename = f"crash_{timestamp.strftime('%Y%m%d_%H%M%S')}.jsonl"
     filepath = crash_dir / filename
 

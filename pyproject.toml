@@ -1,0 +1,50 @@
+[tool.pytest.ini_options]
+# GOV-002 §18: Fail-fast cascade order
+# GOV-002 §25: Marker configuration
+testpaths = ["tests"]
+addopts = [
+    "-v",
+    "--tb=short",
+    "--strict-markers",
+]
+markers = [
+    "unit: Pure unit tests — no I/O, no network, no disk (GOV-002 §4)",
+    "property: Property-based tests via Hypothesis (GOV-002 §5)",
+    "integration: Multi-component interaction tests (GOV-002 §8)",
+    "performance: Benchmark and latency budget tests (GOV-002 §13)",
+    "slow: Tests taking > 1 second",
+    "safety: Safety-critical path tests requiring MC/DC coverage",
+    "quarantine: Flaky tests under investigation (GOV-002 §22)",
+]
+
+[tool.coverage.run]
+source = ["biosphere"]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+fail_under = 80
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "if __name__ == .__main__.",
+]
+
+[tool.mypy]
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+
+[tool.ruff]
+target-version = "py312"
+line-length = 88
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B", "A", "COM", "C4", "PIE", "PT", "SIM", "PLR"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = [
+    "PLR2004",  # Magic numbers are expected in test assertions
+    "PT006",    # pytest.mark.parametrize accepts strings
+    "E501",     # Docstrings may exceed 88 chars for readability
+]
