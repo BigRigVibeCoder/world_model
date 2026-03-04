@@ -72,47 +72,50 @@ biosphere/
 
 ## 🚀 Quick Start
 
-### 1. Clone & Install
+### One-Click Install
 
+**Linux / Mac:**
 ```bash
 git clone https://github.com/BigRigVibeCoder/world_model.git
 cd world_model
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -e ".[dev]"
+./install.sh
 ```
 
-### 2. Run Tests
+**Windows (PowerShell):**
+```powershell
+git clone https://github.com/BigRigVibeCoder/world_model.git
+cd world_model
+.\install.ps1
+```
+
+The installer checks Python, creates a venv, installs everything, and runs a smoke test. Done in ~60 seconds.
+
+### Run the Demo
 
 ```bash
-pytest tests/ -v
-# 195 passed ✅
+source .venv/bin/activate          # Linux/Mac
+# .\.venv\Scripts\Activate.ps1     # Windows
+PYTHONPATH=. python scripts/demo.py
 ```
 
-### 3. Launch the TUI
+### Launch the TUI
 
 ```bash
-python -m biosphere
+PYTHONPATH=. python -m biosphere
 ```
 
-### 4. Train an RL Agent
+### Train an RL Agent
 
 ```python
 from biosphere.rl.train import train
 train(total_timesteps=100_000, save_path="checkpoints/my_agent")
 ```
 
-### 5. Run Headless (No UI)
+### Run All Tests
 
-```python
-from biosphere.core.simulation import SimulationEngine
-from biosphere.infrastructure.config import SimulationConfig
-
-engine = SimulationEngine(SimulationConfig())
-for i in range(100):
-    state = engine.step()
-    sg = state["species_grid"]
-    print(f"Tick {i+1}: {(sg == 1).sum()} plants, {(sg == 2).sum()} prey, {(sg == 3).sum()} predators")
+```bash
+pytest tests/ -v
+# 195 passed ✅
 ```
 
 ---

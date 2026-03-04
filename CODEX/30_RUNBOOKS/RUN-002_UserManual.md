@@ -18,6 +18,57 @@ version: 1.0.0
 
 ---
 
+## 🎯 One-Click Install (Recommended)
+
+Just clone and run ONE command. It handles everything.
+
+### Linux / Mac
+
+```bash
+git clone https://github.com/BigRigVibeCoder/world_model.git
+cd world_model
+./install.sh
+```
+
+### Windows (PowerShell)
+
+```powershell
+git clone https://github.com/BigRigVibeCoder/world_model.git
+cd world_model
+.\install.ps1
+```
+
+> **If PowerShell says "scripts are disabled"**, run this first:
+> ```powershell
+> Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
+> ```
+
+The installer will:
+1. ✅ Check your Python version (3.12+ required)
+2. ✅ Create a virtual environment
+3. ✅ Install all dependencies
+4. ✅ Run a smoke test to prove it works
+5. ✅ Print instructions for launching the app
+
+### After install — run the demo:
+
+**Linux / Mac:**
+```bash
+source .venv/bin/activate
+PYTHONPATH=. python scripts/demo.py
+```
+
+**Windows:**
+```powershell
+.\.venv\Scripts\Activate.ps1
+$env:PYTHONPATH="." ; python scripts\demo.py
+```
+
+You'll see 200 ticks of a living ecosystem with 🌿🐰🐺 emoji visualizations!
+
+---
+
+## Manual Install (Step-by-Step)
 ## Step 1: Make Sure You Have Python 3.12+
 
 Open a terminal and type:
