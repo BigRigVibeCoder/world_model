@@ -6,7 +6,7 @@ status: DRAFT
 owner: architect
 agents: [architect, coder, tester]
 tags: [runbook, project-management, architecture]
-related: [BLU-001, BLU-002, GOV-002, GOV-005]
+related: [BLU-001, BLU-002, EVO-001, EVO-002, EVO-003, GOV-002, GOV-005]
 created: 2026-03-04
 updated: 2026-03-04
 version: 1.0.0

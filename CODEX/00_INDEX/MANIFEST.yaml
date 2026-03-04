@@ -205,3 +205,39 @@ documents:
       Ordered 7-task implementation backlog for the Biosphere Ecological Balancer.
       Dependency-ordered from project foundation to final governance audit.
       Each task includes files to modify, acceptance criteria, and verification commands.
+
+  # ── 60_EVOLUTION ────────────────────────────────────────────────────────────
+  - id: EVO-001
+    path: CODEX/60_EVOLUTION/EVO-001_Sprint1_FoundationCore.md
+    title: "Sprint 1: Foundation & Core Simulation Engine"
+    type: reference
+    status: DRAFT
+    tags: [feature, architecture, project-management]
+    agents: [coder, tester]
+    summary: >
+      First scope-bounded sprint. Establishes project scaffolding (GOV-004/006
+      compliant infrastructure) and the vectorized NumPy simulation engine with
+      GridState, Interventions, and weather/ecology update cycle.
+
+  - id: EVO-002
+    path: CODEX/60_EVOLUTION/EVO-002_Sprint2_RLandTUI.md
+    title: "Sprint 2: RL Environment, Training & TUI Dashboard"
+    type: reference
+    status: DRAFT
+    tags: [feature, architecture, project-management]
+    agents: [coder, tester]
+    summary: >
+      Second sprint. Gymnasium environment (BiosphereEnv), MaskablePPO RL
+      training pipeline, and Textual TUI dashboard. Tasks 3-5 from RUN-001.
+
+  - id: EVO-003
+    path: CODEX/60_EVOLUTION/EVO-003_Sprint3_Integration.md
+    title: "Sprint 3: CLI Integration & Governance Audit"
+    type: reference
+    status: DRAFT
+    tags: [feature, architecture, project-management, verification]
+    agents: [coder, tester]
+    summary: >
+      Final sprint. Wires simulation, RL agent, and TUI into unified CLI entry
+      point, then runs full GOV-002 governance audit. Delivers a working
+      `python -m biosphere` application.

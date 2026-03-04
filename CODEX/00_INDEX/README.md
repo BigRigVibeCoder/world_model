@@ -108,7 +108,9 @@ Welcome to the project knowledge base. This documentation system is designed for
 
 | ID | Title | Type | Status |
 |:---|:------|:-----|:-------|
-| *(empty — add evolution docs as the project grows)* | | | |
+| [EVO-001](../60_EVOLUTION/EVO-001_Sprint1_FoundationCore.md) | Sprint 1: Foundation & Core Simulation Engine | reference | DRAFT |
+| [EVO-002](../60_EVOLUTION/EVO-002_Sprint2_RLandTUI.md) | Sprint 2: RL Environment, Training & TUI Dashboard | reference | DRAFT |
+| [EVO-003](../60_EVOLUTION/EVO-003_Sprint3_Integration.md) | Sprint 3: CLI Integration & Governance Audit | reference | DRAFT |
 
 **Category Codes**: `EVO` (Evolution/Feature), `RFC` (Request for Change)
 

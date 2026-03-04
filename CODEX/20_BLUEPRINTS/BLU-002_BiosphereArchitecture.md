@@ -6,7 +6,7 @@ status: DRAFT
 owner: architect
 agents: [architect, coder, tester]
 tags: [architecture, api, schema, configuration, integration]
-related: [BLU-001, GOV-001, GOV-002, GOV-003, GOV-004, GOV-006]
+related: [BLU-001, RUN-001, EVO-001, EVO-002, EVO-003, GOV-001, GOV-002, GOV-003, GOV-004, GOV-006]
 created: 2026-03-04
 updated: 2026-03-04
 version: 1.0.0
