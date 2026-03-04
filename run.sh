@@ -3,4 +3,4 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 source .venv/bin/activate
-PYTHONPATH=. python scripts/demo.py
+PYTHONPATH=. python scripts/demo.py 2>/dev/null

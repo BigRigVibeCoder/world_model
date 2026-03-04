@@ -1,17 +1,31 @@
 """Biosphere demo — headless simulation with live population output.
 
-Usage:
-    source .venv/bin/activate
-    PYTHONPATH=. python scripts/demo.py
+Usage: ./run.sh
 
 Runs 200 ticks of the ecosystem and prints population dynamics.
 """
 
 from __future__ import annotations
 
-from biosphere.core.simulation import SimulationEngine
-from biosphere.core.state import SPECIES_PLANT, SPECIES_PREDATOR, SPECIES_PREY
-from biosphere.infrastructure.config import SimulationConfig
+import logging
+import os
+
+# Suppress ALL logging before importing biosphere (structlog configures on import)
+os.environ["LOG_LEVEL"] = "CRITICAL"
+logging.disable(logging.CRITICAL)
+
+from biosphere.infrastructure.logging import setup_logging  # noqa: E402
+
+# Force quiet logging — no console output
+setup_logging(level=logging.CRITICAL)
+
+from biosphere.core.simulation import SimulationEngine  # noqa: E402
+from biosphere.core.state import (  # noqa: E402
+    SPECIES_PLANT,
+    SPECIES_PREDATOR,
+    SPECIES_PREY,
+)
+from biosphere.infrastructure.config import SimulationConfig  # noqa: E402
 
 
 def main() -> None:
