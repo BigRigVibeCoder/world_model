@@ -54,14 +54,12 @@ The installer will:
 
 **Linux / Mac:**
 ```bash
-source .venv/bin/activate
-PYTHONPATH=. python scripts/demo.py
+./run.sh
 ```
 
 **Windows:**
 ```powershell
-.\.venv\Scripts\Activate.ps1
-$env:PYTHONPATH="." ; python scripts\demo.py
+.\run.ps1
 ```
 
 You'll see 200 ticks of a living ecosystem with 🌿🐰🐺 emoji visualizations!

@@ -92,10 +92,14 @@ The installer checks Python, creates a venv, installs everything, and runs a smo
 
 ### Run the Demo
 
+**Linux / Mac:**
 ```bash
-source .venv/bin/activate          # Linux/Mac
-# .\.venv\Scripts\Activate.ps1     # Windows
-PYTHONPATH=. python scripts/demo.py
+./run.sh
+```
+
+**Windows:**
+```powershell
+.\run.ps1
 ```
 
 ### Launch the TUI
