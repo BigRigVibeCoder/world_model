@@ -22,6 +22,7 @@ from biosphere.core.state import (
     SPECIES_PREY,
 )
 from biosphere.infrastructure.config import SimulationConfig
+from biosphere.rl.environment import BiosphereEnv
 from biosphere.rl.reward import shannon_entropy
 from biosphere.ui.charts_widget import ChartsWidget
 from biosphere.ui.grid_widget import GridWidget
@@ -94,11 +95,13 @@ class BiosphereApp(App):  # type: ignore[type-arg]
     def __init__(
         self,
         config: SimulationConfig | None = None,
+        brain_path: str | None = None,
     ) -> None:
         """Initialize BiosphereApp.
 
         Args:
             config: Optional SimulationConfig for the engine.
+            brain_path: Optional path to a trained MaskablePPO .zip checkpoint.
         """
         super().__init__()
         self._config = config or SimulationConfig()
@@ -115,6 +118,26 @@ class BiosphereApp(App):  # type: ignore[type-arg]
         )
         self._entropy_history = np.zeros(100, dtype=np.float64)
         self._reward = 0.0
+
+        # Load RL agent if specified
+        self._brain = None
+        if brain_path:
+            import os
+            from pathlib import Path
+            
+            # Force CPU for UI inference to avoid CUDA startup overhead/errors
+            os.environ["CUDA_VISIBLE_DEVICES"] = ""
+            
+            # Auto-find latest if 'checkpoints' is passed as the path
+            ckpt_path = Path(brain_path)
+            if ckpt_path.is_dir():
+                zips = sorted(ckpt_path.glob("*.zip"), key=lambda p: p.stat().st_mtime)
+                if zips:
+                    ckpt_path = zips[-1]
+
+            if ckpt_path.is_file():
+                from sb3_contrib import MaskablePPO
+                self._brain = MaskablePPO.load(str(ckpt_path))
 
     def compose(self) -> ComposeResult:
         """Compose the TUI layout."""
@@ -141,7 +164,28 @@ class BiosphereApp(App):  # type: ignore[type-arg]
         """Advance simulation one step and update display."""
         if self._paused:
             return
-        self._engine.step()
+
+        interventions = None
+        if self._brain:
+            # Build observation and masks for the RL agent
+            state = self._engine.get_state()
+            obs = BiosphereEnv.build_observation(state, self._entropy_history)
+            masks = BiosphereEnv.compute_action_masks(state)
+
+            # Predict action
+            action, _ = self._brain.predict(obs, action_masks=masks, deterministic=True)
+            
+            # Decode to domain Intervention
+            intervention = BiosphereEnv.decode_action(action)
+            interventions = [intervention]
+            
+            # Show the action taken in the dashboard title
+            action_names = ["NO_OP", "SEED", "PRECIP", "CULL"]
+            a_idx = int(action[0])
+            stats_panel = self.query_one("#stats-panel")
+            stats_panel.border_title = f"Dashboard [Brain: {action_names[a_idx]}]"
+
+        self._engine.step(interventions=interventions)
         self._render_state()
 
     def _render_state(self) -> None:

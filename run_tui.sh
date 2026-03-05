@@ -3,4 +3,4 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 source .venv/bin/activate
-LOG_LEVEL=WARNING PYTHONPATH=. python -m biosphere
+LOG_LEVEL=WARNING PYTHONPATH=. python -m biosphere "$@"

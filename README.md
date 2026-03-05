@@ -20,7 +20,6 @@
 
 ## What Is This?
 
-This is a **complete, production-grade application built entirely by AI agents** under the direction of a human Architect. No line of code was written by hand — every file, test, governance document, and deployment script was generated through an **Agentic Development** workflow.
 
 The application itself is a **real-time ecological simulation** — a living digital ecosystem where plants, prey, and predators interact on a 50x50 grid following real published ecological models from biology and mathematics.
 
@@ -114,54 +113,10 @@ cd world_model
 | What You Want | Command |
 |:-------------|:--------|
 | **Dashboard (TUI)** | `./run_tui.sh` |
-| **Headless demo** | `./run.sh` |
+| **Dashboard with AI Brain** | `./run_tui.sh --brain checkpoints/` |
 
-### 3. Run All Tests
 
-```bash
-pytest tests/ -v
-# 195 passed ✅
-```
 
----
-
-## 🧪 Testing
-
-195 tests across 7 tiers — **zero mocks in E2E tests**:
-
-| Tier | Count | What It Tests |
-|:-----|:------|:-------------|
-| Unit | ~100 | Individual functions, pure logic |
-| Property-Based | 10+ | Hypothesis-generated edge cases |
-| Integration | 15+ | Multi-component interactions |
-| Contract | 10+ | API/schema compliance |
-| **E2E (Real)** | **23** | **Full stack, no mocks, strong assertions** |
-| Performance | 2 | Benchmark throughput (~120 ops/sec) |
-| Infrastructure | 8+ | Logging, crash artifacts, config |
-
-### E2E Tests Prove Real Ecosystem Behavior:
-
-- ✅ Predator-prey populations **oscillate** (Lotka-Volterra verified)
-- ✅ Resources **deplete** under consumption and **recover** via logistic growth
-- ✅ Weather **diffuses** via Gaussian blur
-- ✅ Shannon entropy correctly **ranks** biodiversity
-- ✅ Interventions cause **measurable** state changes
-- ✅ Organisms **die** from starvation, old age, and low health
-- ✅ Reproduction **creates** new organisms when energy is high
-- ✅ Energy **flows** through the food chain (plants → prey → predators)
-
-```bash
-# Run everything
-pytest tests/ -v
-
-# Run only E2E tests
-pytest tests/e2e/ -v
-
-# Run with coverage
-pytest tests/ --cov=biosphere --cov-report=html
-```
-
----
 
 ## 📚 Documentation
 
@@ -176,17 +131,6 @@ Full aerospace-grade documentation in `CODEX/`:
 | `40_VERIFICATION/` | Test reports, traceability matrix, coverage HTML |
 | `50_DEFECTS/` | Bug reports and gap analyses |
 
----
-
-## 🔧 Code Quality Tools
-
-```bash
-ruff check biosphere/ tests/     # 25 rule categories
-mypy --strict biosphere/          # Full type safety
-bandit -r biosphere/              # Security scanning
-radon cc biosphere/ -a -nc        # Cyclomatic complexity
-mutmut run                        # Mutation testing
-```
 
 ---
 
@@ -208,7 +152,3 @@ mutmut run                        # Mutation testing
 MIT
 
 ---
-
-<p align="center">
-  <em>Built with the <a href="CODEX/10_GOVERNANCE/">Agentic Architect</a> methodology — an AI-human collaborative development framework.</em>
-</p>
