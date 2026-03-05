@@ -6,13 +6,13 @@ status: APPROVED
 owner: architect
 agents: [all]
 tags: [coding, standards, governance, quality, safety]
-related: [GOV-001, GOV-002, BLU-001, BLU-002, DEF-001]
+related: [GOV-001, GOV-002]
 created: 2026-03-04
 updated: 2026-03-04
-version: 2.0.0
+version: 2.1.0
 ---
 
-> **BLUF:** NASA/JPL-grade polyglot coding standard for agent-written code. Covers Python, C/C++, and React/TypeScript. Enforces NASA Power of 10, MISRA C:2025, DO-178C code review mandates, dead code prohibition, boundary condition requirements, and the Disaster-Readability Principle. While 99% of this code will never be read by humans, it MUST be written so that in a disaster, a human engineer can understand any function in 30 seconds.
+> **BLUF:** NASA/JPL-grade polyglot coding standard for agent-written code. Covers Python, C/C++, and React/TypeScript. Enforces NASA Power of 10, MISRA C:2025, DO-178C code review mandates, dead code prohibition, boundary condition requirements, incident-readability enhancements (inline ADRs, panic breadcrumbs, contract/failure-mode annotations), and the Disaster-Readability Principle. While 99% of this code will never be read by humans, it MUST be written so that in a disaster, a human engineer can understand any function in 30 seconds.
 
 # Coding Standard: The Engineering Discipline
 
@@ -46,6 +46,11 @@ Any function must be understandable by a competent engineer in **30 seconds** wi
 | **Safety comments** | Any safety-critical code | Explain what happens if this fails |
 | **TODO/FIXME/HACK** | Temporary workarounds | Must include author and date |
 | **Invariant assertions** | Complex algorithms | What must be true at this point |
+| **Decision Record** | Any non-trivial design choice | Inline mini-ADR: what was chosen, alternatives, and tradeoff |
+| **Reading Guide / Panic Breadcrumbs** | Complex modules (≥3 public functions) | Ordered triage guide for incident responders |
+| **Contract comments** | Functions with preconditions, side effects, or thread constraints | Preconditions, postconditions, side effects, thread safety |
+| **Failure Mode annotations** | Any function whose failure affects downstream consumers | Blast radius, mitigation, and fallback behavior |
+| **Cross-Reference anchors** | Code tied to specs, tickets, or related code | `REF:`, `SEE ALSO:` links to CODEX docs, defects, or sibling modules |
 
 ```python
 # ❌ BAD: Comment restates the code
@@ -67,6 +72,78 @@ if distance_m < SAFE_STOP_DISTANCE_M:
 - **Descriptive names**: `calculate_braking_distance_m()` not `calc_dist()`.
 - **Guard clauses first**: Error paths at the top, happy path at the bottom.
 - **One responsibility**: Each function does ONE thing.
+
+### 1.4 Incident-Readability Enhancements
+
+These comment types go beyond the basics. They ensure a human dropped cold into the codebase during an incident has **zero ambiguity** about what the code does, why it was written this way, and what breaks if it fails.
+
+#### 1.4.1 Decision Record Comments (Inline ADR)
+
+For any non-trivial design choice, embed a mini Architecture Decision Record directly in the code. This answers the inevitable *"but why didn't they just...?"* question.
+
+```python
+# DECISION: We use NumPy vectorization instead of a per-entity loop.
+# ALTERNATIVES CONSIDERED: Pandas (too slow for >10k entities), Cython (build complexity).
+# TRADEOFF: Readability is lower, but 50x performance gain is required for real-time.
+# REF: BLU-002 §4.3 (performance requirements)
+```
+
+#### 1.4.2 Reading Guide / Panic Breadcrumbs
+
+At the top of complex modules (≥3 public functions or ≥150 lines), add a **triage guide** that tells a panicked human where to start looking:
+
+```python
+"""
+READING GUIDE FOR INCIDENT RESPONDERS:
+1. If species are dying unexpectedly   → check _apply_mortality() and MORTALITY_THRESHOLD
+2. If performance is degraded          → check _vectorized_step() batch sizes
+3. If the RL agent is misbehaving      → check step() reward calculation
+4. If state is corrupt after restart   → check reset() and _initialize_grid()
+"""
+```
+
+#### 1.4.3 Contract Comments
+
+Beyond standard docstrings, explicitly state **preconditions, postconditions, side effects, and thread safety** for functions that have them:
+
+```python
+def transfer_energy(source: Entity, target: Entity, amount_j: float) -> None:
+    """Transfer energy between entities.
+
+    PRECONDITION:  source.energy_j >= amount_j (caller must verify).
+    POSTCONDITION: source.energy_j + target.energy_j == original_total (conservation law).
+    SIDE EFFECTS:  Mutates both source and target in-place.
+    THREAD SAFETY: Not thread-safe. Caller must hold simulation lock.
+    """
+```
+
+#### 1.4.4 Failure Mode Annotations
+
+For any function whose failure affects downstream consumers, document the **blast radius** and **mitigation**:
+
+```python
+# FAILURE MODE: If this returns None, the entire tick is skipped.
+# BLAST RADIUS: All downstream consumers (renderer, RL agent) see stale state.
+# MITIGATION: Caller retries once, then falls back to last-known-good state.
+# SEE ALSO: GOV-004 §7.1 (recovery strategies)
+```
+
+#### 1.4.5 Cross-Reference Anchors
+
+Link code to specs, tickets, and sibling modules. Use standard prefixes for machine-parseability:
+
+```python
+# REF: GOV-004 §3.2 (error escalation pattern)
+# REF: DEF-017 (this workaround compensates for the sensor drift bug)
+# SEE ALSO: engine/weather.py:_apply_temperature() — uses the same energy model
+```
+
+| Prefix | Meaning | Example |
+|:-------|:--------|:--------|
+| `REF:` | This code implements or is constrained by the referenced item | `REF: BLU-002 §4` |
+| `SEE ALSO:` | Related code or docs that share logic or context | `SEE ALSO: utils/math.py:clamp()` |
+| `DECISION:` | Opens an inline ADR block | `DECISION: Use SQLite over PostgreSQL` |
+| `FAILURE MODE:` | Opens a failure annotation block | `FAILURE MODE: Returns empty list on timeout` |
 
 ---
 
@@ -636,6 +713,11 @@ Before submitting code in **any language**:
 - [ ] Static analysis profile enabled and passing (§12)
 - [ ] Code reviewed per §10 (independent review for safety-critical)
 - [ ] A human can understand any function in 30 seconds
+- [ ] Complex modules (≥3 public functions) have a Reading Guide / Panic Breadcrumbs (§1.4.2)
+- [ ] Non-trivial design choices explained with Decision Record comments (§1.4.1)
+- [ ] Functions with preconditions/side effects/thread constraints have Contract comments (§1.4.3)
+- [ ] Functions with downstream impact have Failure Mode annotations (§1.4.4)
+- [ ] Code tied to specs/tickets/sibling modules has Cross-Reference anchors (§1.4.5)
 
 ---
 

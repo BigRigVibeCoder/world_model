@@ -5,7 +5,20 @@ for file-size compliance (≤500 lines per file).
 
 Each function mutates state arrays in-place for performance.
 
-Refs: BLU-001 §4, DEF-001-02
+READING GUIDE FOR INCIDENT RESPONDERS:
+  1. If organisms stop moving          → check phase_movement() and MOVEMENT_PROBABILITY
+  2. If population explodes/collapses  → check phase_reproduction() thresholds and _spawn_offspring()
+  3. If resources are infinite/zero    → check phase_resource_growth() logistic params
+  4. If weather is uniform/frozen      → check phase_weather_diffusion() sigma value
+  5. If mass die-offs occur           → check phase_mortality() and _apply_death()
+  6. If C extension causes corruption → set native.HAS_C_EXTENSION = False to force Python fallback
+  7. If NaN appears in arrays         → C extension may be writing OOB; check _phases_c.c bounds
+
+REF: BLU-001 §4 (6-phase design)
+REF: DEF-001-02 (file extraction from simulation.py)
+SEE ALSO: simulation.py — orchestrates these phases via phase delegates
+SEE ALSO: _phases_c.c — C implementations of movement + reproduction inner loops
+SEE ALSO: native.py — transparent C/Python fallback wrapper
 """
 
 from __future__ import annotations
@@ -14,6 +27,12 @@ from typing import Protocol, runtime_checkable
 
 import numpy as np
 from scipy.ndimage import gaussian_filter  # type: ignore[import-untyped]
+
+from biosphere.core.native import (
+    HAS_C_EXTENSION,
+    c_phase_movement,
+    c_phase_spawn,
+)
 
 from biosphere.core.state import (
     GRID_H,
@@ -208,10 +227,42 @@ def phase_movement(
 
     ~20% of mobile organisms attempt migration each tick.
     Plants do not move.
+
+    PRECONDITION:  state arrays must be valid GridState (no NaN).
+    POSTCONDITION: organism count is conserved (no creation/destruction).
+    SIDE EFFECTS:  Mutates species_grid and organism_attrs in-place.
+    THREAD SAFETY: Not thread-safe. Caller must hold simulation lock.
+
+    FAILURE MODE: If this function silently fails, organisms freeze in place.
+    BLAST RADIUS: Ecosystem diverges — predators starve, prey overpopulate.
+    MITIGATION:   Detected indirectly via population metrics in RL reward.
+    SEE ALSO:     _phases_c.c:phase_movement_c() — C implementation
     """
     sg = state["species_grid"]
     oa = state["organism_attrs"]
 
+    if HAS_C_EXTENSION:
+        # DECISION: Use a CPython C extension instead of Numba JIT or Cython.
+        # ALTERNATIVES CONSIDERED: Numba @njit (GIL issues with NumPy 2.x),
+        #   Cython (build complexity, separate .pyx files).
+        # TRADEOFF: Requires GCC at build time, but 4× throughput gain and
+        #   zero runtime dependencies beyond NumPy.
+        # REF: BLU-001 §4.3 (performance target: ≥1000 steps/sec)
+        rand_arr = rng.random(
+            sg.shape, dtype=np.float32,
+        )
+        dir_arr = rng.integers(
+            0, 4, size=sg.shape, dtype=np.int32,
+        )
+        for species_id in (SPECIES_PREY, SPECIES_PREDATOR):
+            c_phase_movement(
+                sg, oa, GRID_H, GRID_W, MAX_PER_CELL,
+                species_id, MOVEMENT_PROBABILITY,
+                rand_arr, dir_arr,
+            )
+        return
+
+    # Pure Python fallback (original implementation)
     for species_id in (SPECIES_PREY, SPECIES_PREDATOR):
         mask = sg == species_id
         if not mask.any():
@@ -241,7 +292,6 @@ def phase_movement(
             & (target_cols >= 0) & (target_cols < GRID_W)
         )
 
-        # Apply valid moves
         for idx in np.where(valid)[0]:
             sr, sc = int(cell_rows[idx]), int(cell_cols[idx])
             tr, tc = int(target_rows[idx]), int(target_cols[idx])
@@ -385,7 +435,23 @@ def _spawn_offspring(
     sg: np.ndarray, oa: np.ndarray,
     reproduce: np.ndarray, species_id: int,
 ) -> None:
-    """Place offspring in empty slots of reproducing cells."""
+    """Place offspring in empty slots of reproducing cells.
+
+    PRECONDITION:  reproduce must be a bool/uint8 mask same shape as sg.
+    POSTCONDITION: New organisms have health=0.8, energy=0.4, age=0.
+                   Parent energy is halved (×0.5).
+    SIDE EFFECTS:  Mutates sg and oa in-place.
+    SEE ALSO:      _phases_c.c:phase_spawn_offspring_c() — C implementation
+    """
+    if HAS_C_EXTENSION:
+        # REF: BLU-001 §4.3 — C extension for reproduction inner loop
+        c_phase_spawn(
+            sg, oa, reproduce.view(np.uint8),
+            GRID_H, GRID_W, MAX_PER_CELL, species_id,
+        )
+        return
+
+    # Pure Python fallback
     has_reproducer = np.any(reproduce, axis=2)
     has_empty = np.any(sg == SPECIES_EMPTY, axis=2)
     candidate_cells = has_reproducer & has_empty
@@ -393,6 +459,7 @@ def _spawn_offspring(
         return
 
     cell_rows, cell_cols = np.where(candidate_cells)
+
     for idx in range(len(cell_rows)):
         r, c = int(cell_rows[idx]), int(cell_cols[idx])
         repro_slots = np.where(reproduce[r, c])[0]

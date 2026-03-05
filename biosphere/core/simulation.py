@@ -6,6 +6,19 @@ No dependencies on any other biosphere.* module except biosphere.core.
 Public API:
     SimulationParams — Protocol for configuration objects
     SimulationEngine — Stateful engine with step(), get_state(), tick
+
+READING GUIDE FOR INCIDENT RESPONDERS:
+  1. If simulation crashes with SimulationError  → check _check_nan_rollback() for double-NaN
+  2. If state looks wrong after step()           → check _apply_interventions() validation
+  3. If simulation is slow                       → check phases.py C extension (native.HAS_C_EXTENSION)
+  4. If RL agent gets stale state                → check step() returns deep copy, not reference
+  5. If parameters are rejected                  → check _validate_params() ranges
+  6. If initial populations look wrong           → check _initialize_state() density constants
+
+REF: BLU-001 §4 (6-phase simulation design)
+REF: GOV-004 (error handling patterns used here)
+SEE ALSO: phases.py — contains all 6 phase implementations
+SEE ALSO: state.py — GridState TypedDict and array shape definitions
 """
 
 from __future__ import annotations
@@ -137,6 +150,17 @@ class SimulationEngine:
 
         Raises:
             SimulationError: If NaN rollback fails (two consecutive NaN).
+
+        PRECONDITION:  Engine must be initialized (_state is valid GridState).
+        POSTCONDITION: _tick incremented by 1. Returned state is an independent
+                       deep copy — caller owns it and may mutate freely.
+        SIDE EFFECTS:  Mutates _state, _previous_state, _tick in-place.
+        THREAD SAFETY: Not thread-safe. External synchronization required.
+
+        FAILURE MODE: If any phase raises, the tick is partially applied.
+        BLAST RADIUS: RL agent, TUI renderer, and all consumers see stale state.
+        MITIGATION:   NaN rollback restores previous state; double-NaN raises.
+        REF: BLU-001 §4 (6-phase update cycle)
         """
         # Save previous state for NaN rollback
         self._previous_state = self._deep_copy(self._state)
@@ -357,6 +381,17 @@ class SimulationEngine:
 
         On NaN detection: restore previous state, dampen energy by 0.9.
         Two consecutive NaN states raise SimulationError.
+
+        DECISION: Energy dampening (×0.9) was chosen over full state reset.
+        ALTERNATIVES CONSIDERED: Zero-energy reset (too destructive),
+          skip-tick (masks underlying instability).
+        TRADEOFF: Dampening preserves ecosystem continuity but may
+          cause slow population decline if NaN recurs.
+
+        FAILURE MODE: Raises SimulationError on double-NaN (unrecoverable).
+        BLAST RADIUS: Simulation loop terminates; RL training episode ends.
+        MITIGATION:   Caller (RL env) catches and resets the engine.
+        REF: GOV-004 §7.1 (recovery strategies)
         """
         has_nan = (
             np.isnan(self._state["terrain"]).any()
