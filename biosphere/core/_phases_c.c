@@ -122,6 +122,12 @@ phase_movement_c(PyObject *self, PyObject *args)
     const int cell_stride_oa = mpc * N_ATTRS;   /* organism_attrs stride per cell */
     int total_moves = 0;
 
+    /* Prevent double-movement in a single tick */
+    uint8_t *moved = (uint8_t *)calloc((size_t)grid_h * grid_w * mpc, sizeof(uint8_t));
+    if (!moved) {
+        return PyErr_NoMemory();
+    }
+
     /* ── Single pass over all cells ─────────────────────────────── */
     for (int r = 0; r < grid_h; r++) {
         for (int c = 0; c < grid_w; c++) {
@@ -132,6 +138,11 @@ phase_movement_c(PyObject *self, PyObject *args)
             for (int s = 0; s < mpc; s++) {
                 /* Skip if not the target species */
                 if (sg[sg_base + s] != (uint8_t)species_id) {
+                    continue;
+                }
+
+                /* Skip if already moved this tick */
+                if (moved[sg_base + s]) {
                     continue;
                 }
 
@@ -147,7 +158,7 @@ phase_movement_c(PyObject *self, PyObject *args)
 
                 /* Bounds check */
                 if (tr < 0 || tr >= grid_h || tc < 0 || tc >= grid_w) {
-                    continue;
+                    break;  /* Match Python: give up on this cell entirely */
                 }
 
                 /* Find empty slot in target cell */
@@ -163,7 +174,7 @@ phase_movement_c(PyObject *self, PyObject *args)
                     }
                 }
                 if (ts < 0) {
-                    continue;  /* Target cell full */
+                    break;  /* Match Python: Target cell full, give up on this cell entirely */
                 }
 
                 /* ── Transfer organism ────────────────────────── */
@@ -176,12 +187,15 @@ phase_movement_c(PyObject *self, PyObject *args)
                     oa[oa_base + s * N_ATTRS + a] = 0.0f;
                 }
 
+                moved[tgt_sg_base + ts] = 1;
+
                 total_moves++;
                 break;  /* This slot moved — don't move it again */
             }
         }
     }
 
+    free(moved);
     return PyLong_FromLong(total_moves);
 }
 
