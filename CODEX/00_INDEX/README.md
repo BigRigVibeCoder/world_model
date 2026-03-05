@@ -43,11 +43,6 @@ Welcome to the project knowledge base. This documentation system is designed for
 | ID | Title | Type | Status |
 |:---|:------|:-----|:-------|
 | [GOV-001](../10_GOVERNANCE/GOV-001_DocumentationStandard.md) | Documentation Standard | reference | APPROVED |
-| [GOV-002](../10_GOVERNANCE/GOV-002_TestingProtocol.md) | Testing Protocol | reference | APPROVED |
-| [GOV-003](../10_GOVERNANCE/GOV-003_CodingStandard.md) | Coding Standard | reference | APPROVED |
-| [GOV-004](../10_GOVERNANCE/GOV-004_ErrorHandlingProtocol.md) | Error Handling Protocol | reference | APPROVED |
-| [GOV-005](../10_GOVERNANCE/GOV-005_AgenticDevelopmentLifecycle.md) | Agentic Development Lifecycle | reference | APPROVED |
-| [GOV-006](../10_GOVERNANCE/GOV-006_LoggingSpecification.md) | Logging Specification | reference | APPROVED |
 
 **Category Codes**: `GOV` (Governance), `ADR` (Architecture Decision Record)
 
@@ -59,8 +54,7 @@ Welcome to the project knowledge base. This documentation system is designed for
 
 | ID | Title | Type | Status |
 |:---|:------|:-----|:-------|
-| [BLU-001](../20_BLUEPRINTS/BLU-001_BiosphereBalancer.md) | Biosphere Ecological Balancer — Technical Specification | reference | DRAFT |
-| [BLU-002](../20_BLUEPRINTS/BLU-002_BiosphereArchitecture.md) | Biosphere Ecological Balancer — Architecture Specification | reference | DRAFT |
+| *(empty — add specs as the project grows)* | | | |
 
 **Category Codes**: `BLU` (Blueprint/Spec), `API` (API Contract)
 
@@ -72,7 +66,7 @@ Welcome to the project knowledge base. This documentation system is designed for
 
 | ID | Title | Type | Status |
 |:---|:------|:-----|:-------|
-| [RUN-001](../30_RUNBOOKS/RUN-001_BiosphereSprint.md) | Biosphere Implementation Sprint | how-to | DRAFT |
+| *(empty — add runbooks as the project grows)* | | | |
 
 **Category Codes**: `RUN` (Runbook/Guide), `DEP` (Deployment)
 
@@ -108,9 +102,7 @@ Welcome to the project knowledge base. This documentation system is designed for
 
 | ID | Title | Type | Status |
 |:---|:------|:-----|:-------|
-| [EVO-001](../60_EVOLUTION/EVO-001_Sprint1_FoundationCore.md) | Sprint 1: Foundation & Core Simulation Engine | reference | DRAFT |
-| [EVO-002](../60_EVOLUTION/EVO-002_Sprint2_RLandTUI.md) | Sprint 2: RL Environment, Training & TUI Dashboard | reference | DRAFT |
-| [EVO-003](../60_EVOLUTION/EVO-003_Sprint3_Integration.md) | Sprint 3: CLI Integration & Governance Audit | reference | DRAFT |
+| *(empty — add evolution docs as the project grows)* | | | |
 
 **Category Codes**: `EVO` (Evolution/Feature), `RFC` (Request for Change)
 

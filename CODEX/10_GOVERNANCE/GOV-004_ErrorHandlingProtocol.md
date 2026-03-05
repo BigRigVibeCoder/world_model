@@ -6,7 +6,7 @@ status: APPROVED
 owner: architect
 agents: [all]
 tags: [coding, standards, governance, quality, safety]
-related: [GOV-002, GOV-003, GOV-006, BLU-001, DEF-001]
+related: [GOV-002, GOV-003]
 created: 2026-03-04
 updated: 2026-03-04
 version: 2.0.0

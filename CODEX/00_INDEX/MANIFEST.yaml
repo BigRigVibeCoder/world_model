@@ -21,7 +21,7 @@
 # ============================================================================
 
 schema_version: "1.0.0"
-project: "biosphere"
+project: "agentic-architect-template"
 generated: "2026-03-04"
 
 # ── Area Definitions ──────────────────────────────────────────────────────────
@@ -79,7 +79,7 @@ documents:
 
   # ── 00_INDEX ────────────────────────────────────────────────────────────────
   - id: IDX-000
-    path: CODEX/00_INDEX/README.md
+    path: 00_INDEX/README.md
     title: "Documentation Master Index"
     type: reference
     status: APPROVED
@@ -91,7 +91,7 @@ documents:
 
   # ── 10_GOVERNANCE ───────────────────────────────────────────────────────────
   - id: GOV-001
-    path: CODEX/10_GOVERNANCE/GOV-001_DocumentationStandard.md
+    path: 10_GOVERNANCE/GOV-001_DocumentationStandard.md
     title: "Documentation Standard"
     type: reference
     status: APPROVED
@@ -104,7 +104,7 @@ documents:
       and formal retention/archival policies.
 
   - id: GOV-002
-    path: CODEX/10_GOVERNANCE/GOV-002_TestingProtocol.md
+    path: 10_GOVERNANCE/GOV-002_TestingProtocol.md
     title: "Testing Protocol"
     type: reference
     status: APPROVED
@@ -116,7 +116,7 @@ documents:
       MC/DC coverage, forensic artifacts, and fail-fast execution order.
 
   - id: GOV-003
-    path: CODEX/10_GOVERNANCE/GOV-003_CodingStandard.md
+    path: 10_GOVERNANCE/GOV-003_CodingStandard.md
     title: "Coding Standard"
     type: reference
     status: APPROVED
@@ -126,10 +126,12 @@ documents:
       NASA/JPL-grade polyglot coding standard for Python, C/C++, and
       React/TypeScript. NASA Power of 10 backbone, MISRA C:2025, DO-178C
       code review mandates, dead code prohibition, boundary conditions,
-      static analysis profiles, and Disaster-Readability Principle.
+      incident-readability enhancements (inline ADRs, panic breadcrumbs),
+      WCAG 2.1 AA accessibility, data-testid testability, static analysis
+      profiles, and Disaster-Readability Principle.
 
   - id: GOV-004
-    path: CODEX/10_GOVERNANCE/GOV-004_ErrorHandlingProtocol.md
+    path: 10_GOVERNANCE/GOV-004_ErrorHandlingProtocol.md
     title: "Error Handling Protocol"
     type: reference
     status: APPROVED
@@ -142,7 +144,7 @@ documents:
       and mandatory post-incident review.
 
   - id: GOV-005
-    path: CODEX/10_GOVERNANCE/GOV-005_AgenticDevelopmentLifecycle.md
+    path: 10_GOVERNANCE/GOV-005_AgenticDevelopmentLifecycle.md
     title: "Agentic Development Lifecycle"
     type: reference
     status: APPROVED
@@ -155,7 +157,7 @@ documents:
       merge/deploy.
 
   - id: GOV-006
-    path: CODEX/10_GOVERNANCE/GOV-006_LoggingSpecification.md
+    path: 10_GOVERNANCE/GOV-006_LoggingSpecification.md
     title: "Logging Specification"
     type: reference
     status: APPROVED
@@ -166,136 +168,3 @@ documents:
       Trace-first design for agent execution reconstruction. Database and
       flat-file storage, forensic query patterns, correlation IDs, and
       retention policies.
-
-  # ── 20_BLUEPRINTS ───────────────────────────────────────────────────────────
-  - id: BLU-001
-    path: CODEX/20_BLUEPRINTS/BLU-001_BiosphereBalancer.md
-    title: "The Biosphere Ecological Balancer - Technical Specification"
-    type: reference
-    status: DRAFT
-    tags: [architecture, simulation, reinforcement-learning, world_model, ecology]
-    agents: [architect, coder, tester]
-    summary: >
-      A real-time 2D ecological simulation with a Reinforcement Learning
-      "Caretaker" agent that maintains biodiversity via weather, resource, and
-      population interventions. Built on NumPy, Gymnasium/SB3, and Textual TUI.
-
-  - id: BLU-002
-    path: CODEX/20_BLUEPRINTS/BLU-002_BiosphereArchitecture.md
-    title: "Biosphere Ecological Balancer - Architecture Specification"
-    type: reference
-    status: DRAFT
-    tags: [architecture, api, schema, configuration, integration]
-    agents: [architect, coder, tester]
-    summary: >
-      Hardened architectural design for the Biosphere Ecological Balancer.
-      Defines five acyclic modules (core, rl, ui, infrastructure, cli),
-      full interface contracts (GridState, SimulationEngine, BiosphereEnv),
-      action encoding, and GOV-004/006 compliant error handling.
-
-  # ── 30_RUNBOOKS ─────────────────────────────────────────────────────────────
-  - id: RUN-001
-    path: CODEX/30_RUNBOOKS/RUN-001_BiosphereSprint.md
-    title: "Biosphere Implementation Sprint"
-    type: how-to
-    status: DRAFT
-    tags: [runbook, project-management, architecture]
-    agents: [architect, coder, tester]
-    summary: >
-      Ordered 7-task implementation backlog for the Biosphere Ecological Balancer.
-      Dependency-ordered from project foundation to final governance audit.
-      Each task includes files to modify, acceptance criteria, and verification commands.
-
-  - id: RUN-002
-    path: CODEX/30_RUNBOOKS/RUN-002_UserManual.md
-    title: "Biosphere User Manual"
-    type: reference
-    status: DRAFT
-    tags: [runbook, user-manual, operations, getting-started]
-    agents: [all]
-    summary: >
-      Dead-simple step-by-step guide for installing, running, and using
-      the Biosphere Ecological Balancer. 10 steps from zero to running.
-
-  # ── 60_EVOLUTION ────────────────────────────────────────────────────────────
-  - id: EVO-001
-    path: CODEX/60_EVOLUTION/EVO-001_Sprint1_FoundationCore.md
-    title: "Sprint 1: Foundation & Core Simulation Engine"
-    type: reference
-    status: DRAFT
-    tags: [feature, architecture, project-management]
-    agents: [coder, tester]
-    summary: >
-      First scope-bounded sprint. Establishes project scaffolding (GOV-004/006
-      compliant infrastructure) and the vectorized NumPy simulation engine with
-      GridState, Interventions, and weather/ecology update cycle.
-
-  - id: EVO-002
-    path: CODEX/60_EVOLUTION/EVO-002_Sprint2_RLandTUI.md
-    title: "Sprint 2: RL Environment, Training & TUI Dashboard"
-    type: reference
-    status: DRAFT
-    tags: [feature, architecture, project-management]
-    agents: [coder, tester]
-    summary: >
-      Second sprint. Gymnasium environment (BiosphereEnv), MaskablePPO RL
-      training pipeline, and Textual TUI dashboard. Tasks 3-5 from RUN-001.
-
-  - id: EVO-003
-    path: CODEX/60_EVOLUTION/EVO-003_Sprint3_Integration.md
-    title: "Sprint 3: CLI Integration & Governance Audit"
-    type: reference
-    status: DRAFT
-    tags: [feature, architecture, project-management, verification]
-    agents: [coder, tester]
-    summary: >
-      Final sprint. Wires simulation, RL agent, and TUI into unified CLI entry
-      point, then runs full GOV-002 governance audit. Delivers a working
-      `python -m biosphere` application.
-
-  - id: EVO-004
-    path: CODEX/60_EVOLUTION/EVO-004_TUIDashboardEnhancement.md
-    title: "Enhancement: Simulation Dashboard TUI"
-    type: reference
-    status: COMPLETE
-    tags: [feature, ui, enhancement, tui]
-    agents: [coder, tester]
-    summary: >
-      TUI dashboard overhaul. Colored dot grid, titled panels,
-      real-time entropy/reward metrics, dark theme, reset key.
-
-  # ── 40_VERIFICATION ──────────────────────────────────────────────────────────
-  - id: VER-001
-    path: CODEX/40_VERIFICATION/VER-001_TestVerificationReport.md
-    title: "Test Verification Report"
-    type: reference
-    status: DRAFT
-    tags: [verification, testing, coverage, traceability]
-    agents: [tester]
-    summary: >
-      Biosphere test suite verification report. 177+ tests, 84%+ branch
-      coverage, 7 test tiers, MC/DC analysis for safety-critical paths.
-
-  - id: VER-002
-    path: CODEX/40_VERIFICATION/VER-002_TraceabilityMatrix.md
-    title: "Test-to-Requirements Traceability Matrix"
-    type: reference
-    status: DRAFT
-    tags: [verification, testing, traceability, mc-dc]
-    agents: [tester]
-    summary: >
-      Bidirectional traceability from test cases to BLU/GOV requirements.
-      Maps each test module to specification sections per GOV-002 §6.
-
-  # ── 50_DEFECTS ───────────────────────────────────────────────────────────────
-  - id: DEF-001
-    path: CODEX/50_DEFECTS/DEF-001_GovernanceGapAnalysis.md
-    title: "Governance Compliance Gap Analysis"
-    type: reference
-    status: CLOSED
-    tags: [defect, governance, compliance, audit]
-    agents: [all]
-    summary: >
-      Systematic audit of biosphere codebase against all 6 governance docs.
-      22 gaps identified: 3 P0, 5 P1, 8 P2, 6 P3. All remediated in Sprint 3.
-
