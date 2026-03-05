@@ -46,3 +46,6 @@ logs/
 .coverage
 htmlcov/
 .hypothesis/
+
+# RL training checkpoints
+checkpoints/
