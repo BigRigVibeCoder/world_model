@@ -17,7 +17,16 @@ phases_c_ext = Extension(
     name="biosphere.core._phases_c",
     sources=["biosphere/core/_phases_c.c"],
     include_dirs=[np.get_include()],
-    extra_compile_args=["-O3", "-Wall", "-Wextra", "-std=c11"],
+    # WHY -Wno-error=pedantic: NumPy's C API headers contain ISO C function
+    # pointer casts that trigger pedantic warnings. These are standard practice
+    # in CPython extensions and not defects in our code. We still emit pedantic
+    # warnings (-Wpedantic) for visibility but don't promote them to errors.
+    # REF: GOV-003 §7.4 (gcc -Wall -Wextra -Werror -pedantic)
+    extra_compile_args=[
+        "-O3", "-Wall", "-Wextra", "-Werror",
+        "-Wpedantic", "-Wno-error=pedantic",
+        "-std=c11",
+    ],
 )
 
 setup(

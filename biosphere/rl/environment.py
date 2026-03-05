@@ -7,6 +7,13 @@ Provides BiosphereEnv(gym.Env) with:
   - Flat (37,) action masks for MaskablePPO
   - Static codec API: build_observation, compute_action_masks, decode_action
   - Structured logging per GOV-006
+
+READING GUIDE FOR INCIDENT RESPONDERS:
+  1. If RL agent crashes on step()          → check decode_action() range validation
+  2. If observations look wrong             → check build_observation() grid_summary construction
+  3. If action mask blocks valid actions    → check compute_action_masks() species offset logic
+  4. If training never improves            → check MAX_EPISODE_STEPS truncation timing
+  5. If environment won't reset            → check SimulationEngine init in reset()
 """
 
 from __future__ import annotations

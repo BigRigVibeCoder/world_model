@@ -44,9 +44,24 @@ from biosphere.core.state import (
 )
 from biosphere.infrastructure.logging import trace_execution
 
-# ── Validation Constants ──────────────────────────────────────────────────────
+# ── Constants (GOV-003 §5.3) ──────────────────────────────────────────────────
 MAX_AGE_LIMIT: int = 10_000
 WEATHER_SIGMA_MAX: float = 10.0
+
+# Intervention region (10×10 grid cells)
+INTERVENTION_REGION_SIZE: int = 10
+
+# Seeded plant initial attributes (intervention)
+SEEDED_PLANT_HEALTH: float = 0.8
+SEEDED_PLANT_ENERGY: float = 0.5
+SEEDED_PLANT_AGE: float = 0.0
+
+# Initial weather defaults (tick 0)
+INITIAL_PRECIPITATION: float = 0.5
+INITIAL_SUNLIGHT: float = 0.7
+
+# NaN recovery — energy dampening factor on rollback
+NAN_ENERGY_DAMPENING: float = 0.9
 
 
 
@@ -257,8 +272,8 @@ class SimulationEngine:
 
         # Weather: moderate starting conditions
         weather = np.zeros((GRID_H, GRID_W, 2), dtype=np.float32)
-        weather[:, :, 0] = 0.5  # precipitation
-        weather[:, :, 1] = 0.7  # sunlight
+        weather[:, :, 0] = INITIAL_PRECIPITATION
+        weather[:, :, 1] = INITIAL_SUNLIGHT
 
         return GridState(
             terrain=terrain,
@@ -289,7 +304,10 @@ class SimulationEngine:
 
             r0 = intervention.region_row
             c0 = intervention.region_col
-            region = slice(r0, r0 + 10), slice(c0, c0 + 10)
+            region = (
+                slice(r0, r0 + INTERVENTION_REGION_SIZE),
+                slice(c0, c0 + INTERVENTION_REGION_SIZE),
+            )
 
             if intervention.type == InterventionType.SEED_PLANTS:
                 self._intervene_seed_plants(region, intervention.intensity)
@@ -316,9 +334,9 @@ class SimulationEngine:
             self._rng.random(sg.shape).astype(np.float32) < intensity
         )
         sg[fill_mask] = SPECIES_PLANT
-        oa[fill_mask, 0] = 0.8  # health
-        oa[fill_mask, 1] = 0.5  # energy
-        oa[fill_mask, 2] = 0.0  # age
+        oa[fill_mask, 0] = SEEDED_PLANT_HEALTH
+        oa[fill_mask, 1] = SEEDED_PLANT_ENERGY
+        oa[fill_mask, 2] = SEEDED_PLANT_AGE
 
     def _intervene_adjust_precipitation(
         self,
@@ -423,8 +441,8 @@ class SimulationEngine:
         # Rollback to previous state
         self._state = self._deep_copy(self._previous_state)
 
-        # Dampen energy by 0.9
-        self._state["organism_attrs"][:, :, :, 1] *= 0.9
+        # Dampen energy to prevent instability cascade
+        self._state["organism_attrs"][:, :, :, 1] *= NAN_ENERGY_DAMPENING
 
         self._get_logger().warning(
             "engine.nan_rollback",

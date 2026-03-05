@@ -6,6 +6,12 @@ Components:
   - Stability (negative variance of entropy over window) — weight 0.5
   - Population health (mean health of alive organisms) — weight 0.3
   - Terminal penalty (all non-plant species extinct) — -10.0
+
+READING GUIDE FOR INCIDENT RESPONDERS:
+  1. If reward is always zero or negative  → check terminal condition (n_prey==0 and n_pred==0)
+  2. If reward explodes/NaN               → check shannon_entropy() for log(0) edge case
+  3. If stability component dominates      → check ENTROPY_WINDOW and W_STABILITY weight
+  4. To tune reward shaping               → adjust W_BIODIVERSITY, W_STABILITY, W_HEALTH constants
 """
 
 from __future__ import annotations

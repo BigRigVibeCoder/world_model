@@ -6,6 +6,12 @@ Handles:
   - Action masking via BiosphereEnv.action_masks()
   - Checkpoint saving with correlation IDs (GOV-006)
 
+READING GUIDE FOR INCIDENT RESPONDERS:
+  1. If training crashes on import         → check sb3-contrib installation (missing stubs expected)
+  2. If training config not found          → check config/training.yaml path
+  3. If checkpoints not saving             → check checkpoint_dir permissions and disk space
+  4. If training produces no learning      → check hyperparams in YAML, especially learning_rate
+
 mypy: sb3-contrib lacks complete type stubs, so we use targeted ignores.
 """
 

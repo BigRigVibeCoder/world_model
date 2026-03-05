@@ -8,11 +8,11 @@ agents: [all]
 tags: [coding, standards, governance, quality, safety]
 related: [GOV-001, GOV-002]
 created: 2026-03-04
-updated: 2026-03-04
-version: 2.1.0
+updated: 2026-03-05
+version: 2.3.0
 ---
 
-> **BLUF:** NASA/JPL-grade polyglot coding standard for agent-written code. Covers Python, C/C++, and React/TypeScript. Enforces NASA Power of 10, MISRA C:2025, DO-178C code review mandates, dead code prohibition, boundary condition requirements, incident-readability enhancements (inline ADRs, panic breadcrumbs, contract/failure-mode annotations), and the Disaster-Readability Principle. While 99% of this code will never be read by humans, it MUST be written so that in a disaster, a human engineer can understand any function in 30 seconds.
+> **BLUF:** NASA/JPL-grade polyglot coding standard for agent-written code. Covers Python, C/C++, and React/TypeScript. Enforces NASA Power of 10, MISRA C:2025, DO-178C code review mandates, dead code prohibition, boundary condition requirements, incident-readability enhancements (inline ADRs, panic breadcrumbs, contract/failure-mode annotations), WCAG 2.1 AA accessibility, deterministic testability (`data-testid`), CPython C extension pitfalls (§7.5), and the Disaster-Readability Principle. While 99% of this code will never be read by humans, it MUST be written so that in a disaster, a human engineer can understand any function in 30 seconds.
 
 # Coding Standard: The Engineering Discipline
 
@@ -464,6 +464,160 @@ int motor_set_velocity(double velocity_mps);
 | `valgrind` | Memory error detection | Zero errors |
 | `AddressSanitizer` | Runtime memory safety | Clean runs |
 
+### 7.5 CPython C Extension Standards
+
+> CPython C extensions trade developer safety for raw performance. These standards codify the pitfalls and patterns discovered across multiple production C extension deployments. They apply to **any** C code compiled against the CPython and/or NumPy C APIs.
+
+#### 7.5.1 The `-pedantic` Header Trap
+
+NumPy's C API headers (and occasionally CPython's) contain **ISO C function pointer cast violations** that are standard practice in the CPython ecosystem but trigger errors under `-Werror -pedantic`. This is an upstream issue, not a defect in your code.
+
+**Required workaround:** Use `-Wpedantic -Wno-error=pedantic` when combined with `-Werror`:
+
+```python
+# setup.py / pyproject.toml build config
+# WHY -Wno-error=pedantic: NumPy/CPython headers contain ISO C
+# function pointer casts that are standard CPython ecosystem practice.
+extra_compile_args=[
+    "-O3", "-Wall", "-Wextra", "-Werror",
+    "-Wpedantic", "-Wno-error=pedantic",  # Warn, don't error on 3rd-party headers
+    "-std=c11",
+]
+```
+
+> [!CAUTION]
+> **Always document the WHY** in a build-file comment when suppressing any `-Werror` sub-flag. A bare `-Wno-error=pedantic` without explanation will be flagged in code review.
+
+#### 7.5.2 The `NDEBUG` Assertion Trap
+
+Python's `setuptools` injects `-DNDEBUG` into release builds by default. This **silently disables all `assert()` calls** at compile time — your boundary-condition assertions become dead code in production.
+
+**Required practice:**
+
+- `assert()` is acceptable for **development-time documentation and invariant checking**.
+- Do **NOT** rely on `assert()` for input validation that must survive release builds. Use explicit `if` guards with `PyErr_SetString()` for production safety.
+- Document this tradeoff in the file header so future maintainers understand why both patterns coexist.
+
+```c
+/* §7.5.2: assert() disabled in release builds (-DNDEBUG).
+ * These assertions document invariants and catch bugs during development.
+ * Production safety is ensured by PyArg_ParseTuple type checking above. */
+assert(rows > 0 && "rows must be positive");
+assert(cols > 0 && "cols must be positive");
+```
+
+#### 7.5.3 C ↔ Python Constant Parity
+
+When C code provides a hot-path replacement for a Python function, **magic numbers drift silently** between implementations. A value changed in the Python fallback but not in the C extension produces subtle behavioral divergence with no compile error and no test failure (if only one path is exercised).
+
+**Required practice — the `PARITY:` comment pattern:**
+
+```c
+/* In the C extension: tag the Python source location */
+/** Initial health value for newly created entities.
+ *  PARITY: Must match engine.py:spawn_entity() "attrs[..., 0] = 0.8" */
+#define ENTITY_INITIAL_HEALTH  0.8f
+```
+
+```python
+# In the Python fallback: tag the C constant name
+attrs[r, c, slot, 0] = 0.8  # health — PARITY: must match _engine_c.c ENTITY_INITIAL_HEALTH
+```
+
+- **Ideal:** Define constants once in a shared header or Python config and consume from both sides. When this is impractical (build complexity), the `PARITY:` comment pattern is the minimum.
+- **Review requirement:** Any PR modifying a `PARITY:`-tagged value must show the corresponding change in the paired file.
+
+#### 7.5.4 CPython Boilerplate Budget
+
+CPython extension functions have **15–20 lines of mandatory boilerplate** (`PyArg_ParseTuple`, `PyArray_DATA` casts, return value construction). Under the §4.1 60-line function limit, this leaves only **~40 lines for actual logic**.
+
+**Required practice:**
+
+- **Extract aggressively** — move any reusable logic (array scanning, data copying, slot searching) into `static` helper functions.
+- **Helpers are first-class** — they get full Doxygen headers, pre/postconditions, and failure-mode annotations, just like the exported functions.
+- The boilerplate lines **do count** toward the 60-line limit. No exemptions.
+
+#### 7.5.5 Transparent Fallback Wrapper
+
+Every C extension **MUST** have a Python fallback and a transparent wrapper that selects the implementation at import time. This ensures the application stays functional even when the C extension cannot be compiled (missing GCC, cross-platform CI, `pip install` without build tools).
+
+**Required pattern:**
+
+```python
+"""Transparent fallback wrapper for C-accelerated functions.
+
+DECISION: Transparent fallback chosen over hard C dependency.
+ALTERNATIVES: Mandatory C build (breaks pip install),
+  runtime compilation via cffi (fragile, slow first import).
+TRADEOFF: Graceful degradation at ~4× slower throughput
+  when .so is missing.
+"""
+HAS_C_EXTENSION: bool = False
+c_process_batch: Any = None
+
+try:
+    from mypackage.core import _engine_c
+    c_process_batch = _engine_c.process_batch_c
+    HAS_C_EXTENSION = True
+except ImportError:
+    logger.debug("C extension unavailable — using Python fallback")
+```
+
+**Consumer pattern — single code path:**
+
+```python
+if HAS_C_EXTENSION:
+    c_process_batch(data_array, rows, cols, ...)
+    return
+# Python fallback below
+```
+
+#### 7.5.6 Full Phase Replacement (vs. Inner Loop Acceleration)
+
+When accelerating NumPy-based systems, the real bottleneck is often **not** the Python loop, but the **intermediate NumPy array allocations** (boolean masks, `np.where` index arrays, temporary slices). Accelerating only the inner loop leaves these allocations on the Python side.
+
+**Required pattern — Full Phase Replacement:**
+
+Move the *entire logical phase* into C. Pass raw array pointers and perform all iteration, conditions, and mutations in a single C pass.
+
+```c
+/* ❌ WRONG — "Inner Loop" approach: NumPy allocations still dominate */
+/* Python creates mask array, calls np.where, then loops in C */
+
+/* ✅ RIGHT — "Full Phase" approach: single pass over raw buffers */
+for (int r = 0; r < rows; r++) {
+    for (int c = 0; c < cols; c++) {
+        /* Inline the "masking" check — no temporary arrays */
+        if (grid[r * cols + c] != target_id) continue;
+        /* All logic in C — zero Python/NumPy allocations */
+    }
+}
+```
+
+| Approach | Bottleneck | Typical Speedup |
+|:---------|:-----------|:----------------|
+| Pure Python/NumPy | Array allocations + loop overhead | 1× (baseline) |
+| C inner loop only | NumPy allocations remain | ~1.5× |
+| **Full Phase in C** | CPU-bound logic only | **~4×** |
+
+#### 7.5.7 Pre-Generated Randomness
+
+To keep C extension logic **pure and deterministic** (no C-side RNG linking required), generate all required random numbers in Python using `numpy.random.Generator` and pass them as pre-filled arrays.
+
+```python
+# Python side: generate randomness with full NumPy Generator control
+rand_values = rng.random(grid.shape, dtype=np.float32)      # [0, 1) floats
+direction_ids = rng.integers(0, 4, size=grid.shape, dtype=np.int32)  # {0,1,2,3}
+
+# Pass to C as raw buffers alongside the data arrays
+c_process_batch(grid, attrs, rows, cols, rand_values, direction_ids)
+```
+
+**Benefits:**
+- C code stays **reproducible** — same RNG seed → same behavior.
+- No need to link `<math.h>` random functions or manage C-side RNG state.
+- Testable — tests can pass fixed random arrays for deterministic verification.
+
 ---
 
 ## 8. React / TypeScript Standards
@@ -491,36 +645,163 @@ int motor_set_velocity(double velocity_mps);
 - **Props use `interface`** — state/hooks use `type`
 - **One component per file**
 - **Early returns** for loading/error states before the main render
+- **Semantic HTML elements** — use `<article>`, `<section>`, `<nav>` over generic `<div>` for top-level wrappers
+- **Design-decision comments** — explain *why*, not *what*, especially on guard clauses and fallback values
 
 ```tsx
 /**
- * Displays the current system status with health indicators.
- * 
+ * Renders a single dashboard metric card with optional trend indicator.
+ *
+ * **Design decisions:**
+ * - Guard clause exits early for `loading` state (GOV-003 §5.2).
+ * - Null-safe fallback for `value` prevents blank cards in edge cases.
+ * - Semantic `<article>` with `aria-label` enables screen-reader navigation.
+ * - `data-testid` attributes allow deterministic test selectors.
+ *
  * Used by: Dashboard, AdminPanel
- * 
+ *
  * DISASTER NOTE: If this component fails to render, the operator
  * loses visibility into system health. Fail-safe: raw JSON fallback.
+ *
+ * @example
+ * ```tsx
+ * <KPICard
+ *     title="Monthly Revenue"
+ *     value="$124,500"
+ *     icon={DollarSign}
+ *     trend={{ value: 8.1, label: 'vs last month' }}
+ * />
+ * ```
  */
-interface StatusPanelProps {
-  /** Current system status object */
-  status: SystemStatus;
-  /** Called when user requests a manual refresh */
-  onRefresh: () => void;
+interface KPICardProps {
+  /** Human-readable title displayed at the top of the card */
+  title: string;
+  /** Formatted display value (e.g., "$124,500") */
+  value: string | null;
+  /** Lucide icon component */
+  icon: React.ComponentType;
+  /** Optional trend data with percentage and label */
+  trend?: TrendData;
+  /** Whether the card is in a loading state */
+  loading?: boolean;
 }
 
-export function StatusPanel({ status, onRefresh }: StatusPanelProps) {
-  if (!status) return <ErrorFallback message="Status unavailable" />;
+export default function KPICard({ title, value, icon: Icon, trend, loading = false }: KPICardProps) {
+  /* Guard: Loading state (GOV-003 §5.2 — early return) */
+  if (loading) {
+    return <div role="status" aria-label={`Loading ${title}`} data-testid="kpi-skeleton">...</div>
+  }
+
+  /** Defensive fallback: prevents blank cards if upstream data is missing. */
+  const safeValue = value ?? MISSING_VALUE_PLACEHOLDER
 
   return (
-    <div className="status-panel">
-      <HealthIndicator level={status.health} />
-      <button onClick={onRefresh}>Refresh</button>
-    </div>
-  );
+    <article aria-label={`${title}: ${safeValue}`} data-testid={`kpi-card-${title.toLowerCase().replace(/\s+/g, '-')}`}>
+      <Icon aria-hidden="true" />
+      <span>{safeValue}</span>
+    </article>
+  )
 }
 ```
 
-### 8.3 Naming Conventions
+### 8.3 Accessibility (WCAG 2.1 AA)
+
+All UI components **MUST** include accessibility attributes:
+
+| Requirement | Implementation | When Required |
+|:------------|:---------------|:--------------|
+| **`aria-label`** on containers | Describe the widget's content for screen readers | Every interactive or data-display component |
+| **`aria-hidden="true"`** on decorative elements | Icons, gradient accents, visual flourishes | Every non-semantic visual element |
+| **`role="status"`** on loading skeletons | Announce loading state to assistive technology | Every loading/skeleton state |
+| **Semantic HTML** | `<article>` for cards, `<nav>` for navigation, `<section>` for page regions | Always prefer over `<div>` |
+| **Color contrast** | All text meets 4.5:1 contrast ratio | Every text element |
+
+```tsx
+// ✅ GOOD — Accessible card with semantic HTML and ARIA
+<article aria-label={`${title}: ${safeValue}`}>
+    <div aria-hidden="true" className="decorative-gradient" />
+    <Icon aria-hidden="true" />
+</article>
+
+// ❌ BAD — Generic div, no ARIA, icons announced by screen readers
+<div>
+    <Icon />
+</div>
+```
+
+### 8.4 Testability (`data-testid` Attributes)
+
+All components **MUST** include `data-testid` attributes for deterministic test selectors:
+
+| Rule | Rationale |
+|:-----|:----------|
+| **Every rendered component root** gets a `data-testid` | Tests must not rely on CSS classes or text content |
+| **Dynamic IDs** use kebab-case derived from props | `data-testid={\`kpi-card-${title.toLowerCase().replace(/\s+/g, '-')}\`}` |
+| **Conditional sub-elements** get their own `data-testid` | `data-testid="kpi-trend"`, `data-testid="kpi-skeleton"` |
+| **Never use `data-testid` for styling** | Test hooks are invisible to users |
+
+### 8.5 Constants & Type Safety
+
+All constant maps and enumerations **MUST** use `as const` assertions for maximum type narrowing:
+
+```tsx
+// ✅ GOOD — Type-safe, auto-complete friendly, immutable
+const TREND_ARROW = { up: '↑', down: '↓' } as const
+const TREND_COLORS = {
+    positive: 'text-emerald-400',
+    negative: 'text-rose-400',
+} as const
+
+// ❌ BAD — Mutable, widened to `string`, no auto-complete
+const TREND_ARROW = { up: '↑', down: '↓' }
+```
+
+**Sub-interfaces**: When a prop contains a composite shape (e.g., `trend: { value, label }`), extract it into a **named interface** with per-field JSDoc:
+
+```tsx
+// ✅ GOOD — Self-documenting, reusable, hover-documented in IDE
+interface TrendData {
+    /** Percentage change vs previous period. Positive = green, negative = red. */
+    value: number
+    /** Contextual label displayed after the percentage (e.g., "vs last month"). */
+    label: string
+}
+
+export interface KPICardProps {
+    trend?: TrendData
+}
+```
+
+### 8.6 JSDoc with `@example` Blocks
+
+All exported components **MUST** include a JSDoc block with:
+
+| Field | Required | Purpose |
+|:------|:--------:|:--------|
+| Summary line | ✅ | One sentence describing what the component renders |
+| `**Design decisions:**` | ✅ | Bullet list of non-obvious architectural choices |
+| `@example` block | ✅ | Copy-pasteable usage snippet |
+| `Used by:` / `Related:` | ✅ | Consumer and standard references |
+
+### 8.7 CSS Class Formatting
+
+Tailwind utility classes **MUST** be split across multiple lines when they exceed 80 characters, grouped by concern:
+
+```tsx
+// ✅ GOOD — Grouped by concern: layout → color → animation
+<article
+    className="group relative overflow-hidden rounded-xl border border-zinc-800
+               bg-zinc-950/40 p-6 shadow-sm shadow-black/20 backdrop-blur-xl
+               transition-all duration-300
+               hover:-translate-y-1 hover:border-zinc-700
+               hover:bg-zinc-900/60 hover:shadow-md hover:shadow-white/5"
+>
+
+// ❌ BAD — Single unreadable line
+<article className="group relative overflow-hidden rounded-xl border border-zinc-800 bg-zinc-950/40 p-6 shadow-sm shadow-black/20 backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:border-zinc-700 hover:bg-zinc-900/60 hover:shadow-md hover:shadow-white/5">
+```
+
+### 8.8 Naming Conventions
 
 | Element | Convention | Example |
 |:--------|:-----------|:--------|
@@ -529,9 +810,10 @@ export function StatusPanel({ status, onRefresh }: StatusPanelProps) {
 | Event handlers | `handleVerb` or `onVerb` | `handleSubmit`, `onClose` |
 | Boolean props | `is/has/should` prefix | `isLoading`, `hasError` |
 | Constants | `UPPER_SNAKE` | `MAX_RETRIES`, `API_URL` |
+| Constant maps | `UPPER_SNAKE` + `as const` | `TREND_COLORS`, `STATUS_STYLES` |
 | Utility files | `kebab-case.ts` | `date-utils.ts`, `api-client.ts` |
 
-### 8.4 Tools & Enforcement
+### 8.9 Tools & Enforcement
 
 | Tool | Purpose | CI Gate |
 |:-----|:--------|:--------|
@@ -702,7 +984,9 @@ Before submitting code in **any language**:
 - [ ] Cyclomatic complexity ≤10 per function
 - [ ] Nesting depth ≤4 levels
 - [ ] All public functions have docstrings/JSDoc/Doxygen comments
+- [ ] All exported React components include `@example` JSDoc block (§8.6)
 - [ ] All magic numbers replaced with named constants
+- [ ] All constant maps use `as const` assertion (§8.5)
 - [ ] All return values checked or explicitly ignored with comment
 - [ ] Guard clauses handle error paths first
 - [ ] ≥2 assertions per non-trivial function
@@ -718,6 +1002,10 @@ Before submitting code in **any language**:
 - [ ] Functions with preconditions/side effects/thread constraints have Contract comments (§1.4.3)
 - [ ] Functions with downstream impact have Failure Mode annotations (§1.4.4)
 - [ ] Code tied to specs/tickets/sibling modules has Cross-Reference anchors (§1.4.5)
+- [ ] **React/TS only:** Semantic HTML elements used (§8.3)
+- [ ] **React/TS only:** ARIA attributes present on all components (§8.3)
+- [ ] **React/TS only:** `data-testid` attributes on all component roots and key sub-elements (§8.4)
+- [ ] **React/TS only:** Multi-line className formatting for long utility strings (§8.7)
 
 ---
 

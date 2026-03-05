@@ -45,12 +45,68 @@ from biosphere.core.state import (
     GridState,
 )
 
-# ── Constants ─────────────────────────────────────────────────────────────────
+# ── Constants (GOV-003 §5.3: No Magic Numbers) ───────────────────────────────
+# Every numeric literal used in simulation logic is defined here.
+# WHY: Named constants are searchable, self-documenting, and prevent
+#      silent drift between Python fallback and C extension.
 
+# Initialization densities — probability of cell occupancy at tick 0
 INIT_PLANT_DENSITY: float = 0.3
 INIT_PREY_DENSITY: float = 0.1
 INIT_PREDATOR_DENSITY: float = 0.03
+
+# Initial organism attribute ranges (for rng.uniform at tick 0)
+INIT_HEALTH_MIN: float = 0.5
+INIT_HEALTH_MAX: float = 1.0
+INIT_ENERGY_MIN: float = 0.3
+INIT_ENERGY_MAX: float = 0.8
+INIT_AGE_MIN: float = 0.0
+INIT_AGE_MAX: float = 50.0
+
+# Terrain generation
+TEMP_MIN: float = 20.0     # °C — coolest row
+TEMP_MAX: float = 35.0     # °C — warmest row
+TEMP_NOISE_SIGMA: float = 2.0  # Temperature noise standard deviation
+
+# Resource initialization — correlation with terrain humidity
+BIOMASS_HUMIDITY_FACTOR: float = 0.8
+BIOMASS_NOISE_SIGMA: float = 0.1
+WATER_HUMIDITY_FACTOR: float = 0.9
+WATER_NOISE_SIGMA: float = 0.05
+
+# Phase 1: Weather diffusion
+WEATHER_NOISE_SIGMA: float = 0.02
+
+# Phase 2: Resource growth
+WATER_REPLENISH_RATE: float = 0.1   # Fraction of precipitation → water gain
+WATER_EVAPORATION_RATE: float = 0.05  # Base water loss per tick
+
+# Phase 3: Movement
 MOVEMENT_PROBABILITY: float = 0.2
+
+# Phase 4: Consumption — plant absorption
+PLANT_ABSORPTION_RATE: float = 0.1  # Fraction of biomass plants absorb/tick
+PLANT_CONSUMPTION_RATE: float = 0.05  # Biomass removed per feeding plant
+
+# Phase 4: Consumption — prey (Holling Type II functional response)
+PREY_ATTACK_RATE: float = 0.3        # 'a' in Holling Type II
+PREY_HANDLING_TIME: float = 0.1      # 'h' in Holling Type II
+PREY_ENERGY_EFFICIENCY: float = 0.8  # Fraction of consumed biomass → energy
+
+# Phase 4: Consumption — predator
+PREDATOR_CATCH_BASE: float = 0.3     # Base catch rate multiplier
+PREDATOR_ENERGY_EFFICIENCY: float = 0.7  # Fraction of catch → energy
+
+# Phase 5: Reproduction
+SIGMOID_STEEPNESS: float = 10.0  # 'k' in sigmoid p = 1/(1+exp(-k(E-threshold)))
+#   PARITY: _phases_c.c OFFSPRING_INITIAL_HEALTH / ENERGY / AGE / PARENT_COST
+OFFSPRING_HEALTH: float = 0.8
+OFFSPRING_ENERGY: float = 0.4
+OFFSPRING_AGE: float = 0.0
+PARENT_ENERGY_COST: float = 0.5
+
+# Phase 6: Mortality
+HEALTH_DECAY_RATE: float = 0.001  # Health lost per tick for all alive organisms
 
 
 @runtime_checkable
@@ -81,9 +137,9 @@ def init_terrain(rng: np.random.Generator) -> np.ndarray:
     )
     # Temperature: gradient + noise
     terrain[:, :, 1] = np.linspace(
-        20.0, 35.0, GRID_H, dtype=np.float32,
+        TEMP_MIN, TEMP_MAX, GRID_H, dtype=np.float32,
     )[:, np.newaxis] + rng.normal(
-        0, 2, (GRID_H, GRID_W),
+        0, TEMP_NOISE_SIGMA, (GRID_H, GRID_W),
     ).astype(np.float32)
     # Humidity: clamped smooth random
     terrain[:, :, 2] = np.clip(
@@ -135,13 +191,13 @@ def init_organisms(
     alive_mask = species_grid > SPECIES_EMPTY
     n_alive = int(alive_mask.sum())
     organism_attrs[alive_mask, 0] = rng.uniform(
-        0.5, 1.0, size=n_alive,
+        INIT_HEALTH_MIN, INIT_HEALTH_MAX, size=n_alive,
     ).astype(np.float32)  # health
     organism_attrs[alive_mask, 1] = rng.uniform(
-        0.3, 0.8, size=n_alive,
+        INIT_ENERGY_MIN, INIT_ENERGY_MAX, size=n_alive,
     ).astype(np.float32)  # energy
     organism_attrs[alive_mask, 2] = rng.uniform(
-        0.0, 50.0, size=n_alive,
+        INIT_AGE_MIN, INIT_AGE_MAX, size=n_alive,
     ).astype(np.float32)  # age
 
     assert species_grid.shape == (GRID_H, GRID_W, MAX_PER_CELL)
@@ -159,13 +215,13 @@ def init_resources(
     """
     resources = np.zeros((GRID_H, GRID_W, 2), dtype=np.float32)
     resources[:, :, 0] = np.clip(
-        terrain[:, :, 2] * 0.8
-        + rng.normal(0, 0.1, (GRID_H, GRID_W)).astype(np.float32),
+        terrain[:, :, 2] * BIOMASS_HUMIDITY_FACTOR
+        + rng.normal(0, BIOMASS_NOISE_SIGMA, (GRID_H, GRID_W)).astype(np.float32),
         0.0, 1.0,
     )  # plant_biomass
     resources[:, :, 1] = np.clip(
-        terrain[:, :, 2] * 0.9
-        + rng.normal(0, 0.05, (GRID_H, GRID_W)).astype(np.float32),
+        terrain[:, :, 2] * WATER_HUMIDITY_FACTOR
+        + rng.normal(0, WATER_NOISE_SIGMA, (GRID_H, GRID_W)).astype(np.float32),
         0.0, 1.0,
     )  # water
     assert resources.shape == (GRID_H, GRID_W, 2)
@@ -182,7 +238,7 @@ def phase_weather_diffusion(
     sigma = params.weather_sigma
     if sigma > 0.0:
         weather = state["weather"]
-        noise = rng.normal(0, 0.02, weather.shape).astype(np.float32)
+        noise = rng.normal(0, WEATHER_NOISE_SIGMA, weather.shape).astype(np.float32)
         weather += noise
         for ch in range(weather.shape[2]):
             weather[:, :, ch] = gaussian_filter(
@@ -213,7 +269,7 @@ def phase_resource_growth(
 
     precip = weather[:, :, 0]
     water = resources[:, :, 1]
-    water_delta = 0.1 * precip - 0.05
+    water_delta = WATER_REPLENISH_RATE * precip - WATER_EVAPORATION_RATE
     resources[:, :, 1] = np.clip(water + water_delta, 0.0, 1.0)
 
 
@@ -342,11 +398,11 @@ def _consume_plants(
     n_plants = plant_mask.sum(axis=2).astype(np.float32)
     share = np.where(
         n_plants > 0,
-        biomass_available * 0.1 / np.maximum(n_plants, 1.0), 0.0,
+        biomass_available * PLANT_ABSORPTION_RATE / np.maximum(n_plants, 1.0), 0.0,
     )
     energy_gain = share[:, :, np.newaxis] * plant_mask.astype(np.float32)
     oa[:, :, :, 1] = np.clip(oa[:, :, :, 1] + energy_gain, 0.0, 1.0)
-    consumption = share * n_plants * 0.05
+    consumption = share * n_plants * PLANT_CONSUMPTION_RATE
     resources[:, :, 0] = np.clip(
         biomass_available - consumption, 0.0, 1.0,
     )
@@ -361,13 +417,13 @@ def _consume_prey(
         return
     biomass = resources[:, :, 0]
     n_prey = prey_mask.sum(axis=2).astype(np.float32)
-    a = 0.3  # attack rate
-    h = 0.1  # handling time
+    a = PREY_ATTACK_RATE
+    h = PREY_HANDLING_TIME
     consumed = np.where(
         n_prey > 0, a * biomass / (1.0 + a * h * n_prey), 0.0,
     )
     energy_per_prey = np.where(
-        n_prey > 0, consumed * 0.8 / np.maximum(n_prey, 1.0), 0.0,
+        n_prey > 0, consumed * PREY_ENERGY_EFFICIENCY / np.maximum(n_prey, 1.0), 0.0,
     )
     oa[:, :, :, 1] = np.clip(
         oa[:, :, :, 1]
@@ -387,10 +443,10 @@ def _consume_predators(sg: np.ndarray, oa: np.ndarray) -> None:
     n_pred = pred_mask.sum(axis=2).astype(np.float32)
     catch_rate = np.where(
         n_prey_per_cell > 0,
-        np.minimum(0.3 * n_prey_per_cell / np.maximum(n_pred, 1.0), 1.0),
+        np.minimum(PREDATOR_CATCH_BASE * n_prey_per_cell / np.maximum(n_pred, 1.0), 1.0),
         0.0,
     )
-    energy_from_prey = catch_rate * 0.7
+    energy_from_prey = catch_rate * PREDATOR_ENERGY_EFFICIENCY
     oa[:, :, :, 1] = np.clip(
         oa[:, :, :, 1]
         + energy_from_prey[:, :, np.newaxis] * pred_mask.astype(np.float32),
@@ -420,7 +476,7 @@ def phase_reproduction(
             continue
 
         energy = oa[:, :, :, 1]
-        k = 10.0
+        k = SIGMOID_STEEPNESS
         prob = 1.0 / (1.0 + np.exp(-k * (energy - threshold)))
         reproduce = mask & (
             rng.random(mask.shape).astype(np.float32) < prob
@@ -472,10 +528,10 @@ def _spawn_offspring(
         ns = int(empty_slots[0])
 
         sg[r, c, ns] = species_id
-        oa[r, c, ns, 0] = 0.8  # health
-        oa[r, c, ns, 1] = 0.4  # energy (child)
-        oa[r, c, ns, 2] = 0.0  # age
-        oa[r, c, s, 1] *= 0.5  # parent energy cost
+        oa[r, c, ns, 0] = OFFSPRING_HEALTH  # PARITY: _phases_c.c OFFSPRING_INITIAL_HEALTH
+        oa[r, c, ns, 1] = OFFSPRING_ENERGY  # PARITY: _phases_c.c OFFSPRING_INITIAL_ENERGY
+        oa[r, c, ns, 2] = OFFSPRING_AGE     # PARITY: _phases_c.c OFFSPRING_INITIAL_AGE
+        oa[r, c, s, 1] *= PARENT_ENERGY_COST  # PARITY: _phases_c.c PARENT_ENERGY_COST_FACTOR
 
 
 # ── Phase 6: Mortality ────────────────────────────────────────────────────────
@@ -502,7 +558,7 @@ def phase_mortality(
     # Age increment
     oa[:, :, :, 2] += alive.astype(np.float32)
     # Health decay
-    oa[:, :, :, 0] -= 0.001 * alive.astype(np.float32)
+    oa[:, :, :, 0] -= HEALTH_DECAY_RATE * alive.astype(np.float32)
 
     _apply_death(sg, oa, alive, params)
 
